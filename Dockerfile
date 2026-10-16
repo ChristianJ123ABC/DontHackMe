@@ -17,6 +17,11 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    default-libmysqlclient-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create a non-privileged user that the app will run under.
 # See https://docs.docker.com/go/dockerfile-user-best-practices/
@@ -43,6 +48,7 @@ USER appuser
 
 # Copy the source code into the container.
 COPY . .
+RUN mkdir -p /app/static/uploads && chown -R appuser:appuser /app/static/uploads
 
 # Expose the port that the application listens on.
 EXPOSE 5000
