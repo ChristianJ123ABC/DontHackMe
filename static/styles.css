@@ -1,0 +1,94 @@
+
+/*!-- https://blog.teclado.com/flashing-messages-with-flask/ Flash Messages-->
+      https://getbootstrap.com/docs/6.0/examples/heroes/
+*/
+
+
+/*Flash Message Styling
+*/
+.alert {
+  padding: 12px;
+  border-radius: 3px;
+  font-size: 1.2rem;
+  margin-bottom: 16px;
+  border-width: 2px;
+  border-style: solid;
+}
+
+.alert-success {
+    border-color: #28a745;  
+    background-color:#f8f8f8
+} 
+.alert-danger { 
+    border-color: solid darkred;
+    background-color: red;
+    color: white;
+}
+.alert-warning { 
+    border-color: #ffc107;
+    background-color: black;
+ } 
+
+
+
+
+
+body{
+    font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif
+}
+
+
+/*Centers the navbar items*/
+#landingPage .navbar .container-fluid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+}
+#landingPage .navbar-brand {
+    grid-column: 1;
+    justify-self: start;
+}
+
+
+
+.landingCards {
+    width: 100%;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+ h2 {
+    font-size: 2rem;
+    margin-bottom: 20px;
+    font-weight: bold;
+    color: #6ab0f6;
+}
+
+
+/*Center the images and put text at the right.*/
+.examples {
+    display: flex;
+    flex-direction: column;
+    gap: 40px; 
+    max-width: 1000px; 
+    margin: 0 auto;
+}
+
+.cards {
+    display: flex;
+    align-items: center;
+    gap: 30px; 
+     
+}
+
+.cards img{
+    border-radius: 25px;
+    box-shadow: 5px 10px 20px rgba(45, 50, 60, 0.937);
+}
+
+img:hover{
+    transform: scale(1.05);
+}
+
