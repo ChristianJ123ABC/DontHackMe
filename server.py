@@ -15,6 +15,9 @@
 #https://bitwarden.com/passphrase-generator/
 #https://codereview.stackexchange.com/questions/216128/generate-eff-diceware-passwords-with-python
 
+#Disabling Cache / hiding sensitive data
+#https://stackoverflow.com/questions/34066804/disabling-caching-in-flask
+
 import re, io, re, string, pyotp, qrcode, requests, os, base64, werkzeug, gunicorn, secrets
 from flask import Flask, render_template, redirect, url_for, request, session, flash
 from flask_wtf.csrf import CSRFProtect
@@ -31,6 +34,16 @@ from cryptography.fernet import Fernet
 load_dotenv(override=True)
 
 app = Flask(__name__, template_folder='templates')
+
+#Prevents user from clicking the Back button on the browser to see previous, sensitive information (Disables cache)
+@app.after_request
+def add_headers(response):
+    if request.endpoint != "static":
+        response.headers["Cache-Control"] = "no-store, no-cache" 
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 csrf = CSRFProtect(app) #Used to prove the user is real and not a bot.
 app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
 app.config['MYSQL_USER'] = os.getenv('MYSQL_USER')
