@@ -15,7 +15,7 @@
 #https://bitwarden.com/passphrase-generator/
 #https://codereview.stackexchange.com/questions/216128/generate-eff-diceware-passwords-with-python
 
-import re, io, re, string, random, pyotp, qrcode, requests, os, base64, werkzeug, gunicorn,secrets
+import re, io, re, string, pyotp, qrcode, requests, os, base64, werkzeug, gunicorn, secrets
 from flask import Flask, render_template, redirect, url_for, request, session, flash
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -57,17 +57,17 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # #
 
 # #
-# PASSWORD / PASSPHRASE GENERATOR (NIST SP800-63B-4 GUIDELINES)
+# PASSWORD / PASSPHRASE GENERATOR (NIST SP800-63B-4 GUIDELINES) (no complexity guidelines, minimum 15 characters, maximum 128 characters and CSPRNG numbers/word choice)
 # #  
 
-wordlist = []
 
-#Dividing the eff wordlist into words and adding it to an array
-with open("data/eff_large_wordlist.txt") as f:
-    for line in f:
+#Grabs all of the words from the eff 2016 wordlist to turn into passphrases
+wordlist = []
+with open("data/eff_large_wordlist.txt") as eff:
+    for line in eff:
         if line.strip() != "":
-            num, word = line.split()
-            wordlist.append(word)
+            num, phrase = line.split()
+            wordlist.append(phrase)
 
 upperChar = string.ascii_uppercase
 lowerChar = string.ascii_lowercase
@@ -76,6 +76,11 @@ symbols = "#@!%$&^*()?_"
 
 
 def generatePassphrase(wordCount, capitalize, number):
+    if wordCount < 5:
+        wordCount = 5
+    if wordCount > 10:
+        wordCount = 10
+
     words = []
     for _ in range(wordCount):
         word = secrets.choice(wordlist)
@@ -85,12 +90,21 @@ def generatePassphrase(wordCount, capitalize, number):
         if number:
             word = secrets.choice(wordlist)+secrets.choice(digits)
 
+        if number and capitalize:
+            word = (secrets.choice(wordlist)+secrets.choice(digits)).capitalize()
+
         words.append(word)
 
     return "-".join(words)
     
 
 def generatePassword(length, upperChar, lowerChar, digits, symbols):
+    if length < 15:
+        length = 15
+    if length > 128:
+        length = 128
+
+
     password = ""
 
     if upperChar:
@@ -103,7 +117,7 @@ def generatePassword(length, upperChar, lowerChar, digits, symbols):
         password = password+string.digits
 
     if symbols: 
-        password = password+symbols
+        password = password+"#@!%$&^*()?_"
 
     if password == "":
         password = string.ascii_letters
@@ -119,17 +133,47 @@ def generatePassword(length, upperChar, lowerChar, digits, symbols):
 
 @app.route("/")
 def home():
-    return render_template("landing-page.html")
+    return render_template("landing_page.html")
 
 
 # #
 #  USER AUTHENTICATION (REGISTER, LOGIN, PASSWORD GENERATOR)
 # #
 
-@app.route("/password-generator", methods=["GET", "POST"])
+@app.route("/password_generator")
 def password_generator():
-    if request.method == "GET":
-        return render_template("password-generator.html")
+
+    #Used to display a specific generator
+    mode = request.args.get("mode")
+    if mode != "passphrase":
+        mode = "password"
+    return render_template("password_generator.html", mode = mode)
+
+@app.route("/generate", methods=["POST"])
+def generate():
+    mode = request.form["mode"]
+    if mode != "passphrase":
+        mode = "password"
+
+    upperChar = request.form.get("upperChar")
+    lowerChar = request.form.get("lowerChar")
+    digits = request.form.get("digits")
+    symbols = request.form.get("symbols")
+    capitalize = request.form.get("capitalize")
+    number = request.form.get("number")
+
+
+    if mode == "password":
+        length = int(request.form["length"])
+        password = generatePassword(length, upperChar, lowerChar, digits, symbols)
+
+    else:
+        words = int(request.form["words"])
+        password = generatePassphrase(words, capitalize, number)
+
+    #x = x is used to keep persistent checkbox marked via jinja template
+    return render_template("password_generator.html", password=password, mode=mode, upperChar=upperChar, lowerChar=lowerChar, digits=digits, symbols=symbols, capitalize=capitalize, number=number) 
+
 
 
 
