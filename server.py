@@ -28,7 +28,6 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.fernet import Fernet
 
-from random import randrange
 load_dotenv(override=True)
 
 app = Flask(__name__, template_folder='templates')
