@@ -14,6 +14,7 @@
 #https://stackoverflow.com/questions/9264033/how-to-insert-value-in-input-with-javascript
 #https://bitwarden.com/passphrase-generator/
 #https://codereview.stackexchange.com/questions/216128/generate-eff-diceware-passwords-with-python
+#https://www.geeksforgeeks.org/python/secrets-python-module-generate-secure-random-numbers/
 
 #Disabling Cache / hiding sensitive data
 #https://stackoverflow.com/questions/34066804/disabling-caching-in-flask
@@ -99,13 +100,13 @@ def generatePassphrase(wordCount, capitalize, number):
         if capitalize:
             word = word.capitalize()
 
-        if number:
-            word = secrets.choice(wordlist)+secrets.choice(digits)
-
-        if number and capitalize:
-            word = (secrets.choice(wordlist)+secrets.choice(digits)).capitalize()
-
         words.append(word)
+
+    #Adds a number to the end of a random word
+    if number:
+        index = secrets.randbelow(len(words))
+        words[index] = words[index] + secrets.choice(digits)
+    
 
     return "-".join(words)
     
