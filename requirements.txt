@@ -1,0 +1,10 @@
+Flask
+Flask-WTF
+Flask-MySQLdb
+Flask-Limiter
+pyotp
+qrcode[pil]
+requests
+python-dotenv
+cryptography
+gunicorn
