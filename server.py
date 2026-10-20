@@ -31,10 +31,33 @@ from dotenv import load_dotenv
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.fernet import Fernet
-
 load_dotenv(override=True)
 
 app = Flask(__name__, template_folder='templates')
+csrf = CSRFProtect(app) #Used to prove the user is real and not a bot.
+app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
+app.config['MYSQL_USER'] = os.getenv('MYSQL_USER')
+app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD')
+app.config['MYSQL_DB'] = os.getenv('MYSQL_DB')
+app.config['MYSQL_PORT'] = int(os.getenv('MYSQL_PORT'))
+app.config["MYSQL_CHARSET"] = os.getenv("MYSQL_CHARSET") 
+app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=15)
+app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static/uploads')
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+app.secret_key = os.getenv("SECRET_KEY") 
+mysql = MySQL(app)
+
+app.config["RATELIMIT_ENABLED"] = False
+rateLimiter = Limiter(
+    get_remote_address,
+    app=app,
+    storage_uri="memory://",
+)
+
+f = Fernet(os.getenv("TOTP_ENCRYPTION_KEY").encode()) 
+
+
 
 #Prevents user from clicking the Back button on the browser to see previous, sensitive information (Disables cache)
 @app.after_request
@@ -45,29 +68,35 @@ def add_headers(response):
         response.headers["Expires"] = "0"
     return response
 
-csrf = CSRFProtect(app) #Used to prove the user is real and not a bot.
-app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
-app.config['MYSQL_USER'] = os.getenv('MYSQL_USER')
-app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD')
-app.config['MYSQL_DB'] = os.getenv('MYSQL_DB')
-app.config['MYSQL_PORT'] = int(os.getenv('MYSQL_PORT'))
-app.config["MYSQL_CHARSET"] = os.getenv("MYSQL_CHARSET") 
-app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
-app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=15)
-app.secret_key = os.getenv("SECRET_KEY") 
-mysql = MySQL(app)
+#Default route
+@app.route("/")
+def home():
+    return render_template("landing_page.html")
 
-app.config["RATELIMIT_ENABLED"] = False
-rateLimiter = Limiter(get_remote_address, app=app, storage_uri = "memory://")
-f = Fernet(os.getenv("TOTP_ENCRYPTION_KEY").encode())
-
-app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static/uploads')
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 
 # #
 # FUNCTIONS FOR VALIDATIONS (NOTE: MOVE TO SEPARATE .py LATER ON)
 # #
+
+# #
+# EXCEPTION HANDLING FUNCTIONS 
+# # 
+
+#Exceeding rate limit
+@app.errorhandler(werkzeug.exceptions.TooManyRequests)
+def handle_rate_limit(e):
+    return "429 Too Many Requests: Too many attempts.", 429
+  
+@app.errorhandler(werkzeug.exceptions.NotFound)
+def handle_notfound_request(e):
+    return '404 Page not found', 404
+
+#Catch general errors
+@app.errorhandler(werkzeug.exceptions.InternalServerError)
+def handle_server_error(e):
+   return "500 Internal Server Error: Conflict has occurred.", 500
+
 
 # #
 # PASSWORD / PASSPHRASE GENERATOR (NIST SP800-63B-4 GUIDELINES) (no complexity guidelines, minimum 15 characters, maximum 128 characters and CSPRNG numbers/word choice)
@@ -144,13 +173,9 @@ def generatePassword(length, upperChar, lowerChar, digits, symbols):
 
 
 
-@app.route("/")
-def home():
-    return render_template("landing_page.html")
-
 
 # #
-#  USER AUTHENTICATION (REGISTER, LOGIN, PASSWORD GENERATOR)
+#  USER AUTHENTICATION (ORDER: Password Generator, Register, Login)
 # #
 
 @app.route("/password_generator")
@@ -186,7 +211,6 @@ def generate():
 
     #x = x is used to keep persistent checkbox marked via jinja template
     return render_template("password_generator.html", password=password, mode=mode, upperChar=upperChar, lowerChar=lowerChar, digits=digits, symbols=symbols, capitalize=capitalize, number=number) 
-
 
 
 
