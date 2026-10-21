@@ -128,10 +128,7 @@ def failPasswordPolicy(password):
         for line in x:
             password = line.split()
             blocklist.append(password)
-    if password < 15 and password > 128:
-        return False
-
-    elif (blocklist.contains(password)):
+    if password < 15 or password > 128 or blocklist.contains(password):
         return False
 
     return None
