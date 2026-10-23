@@ -18,13 +18,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Password Generator</title>
+    <title>Register Page</title>
 
     <!-- Links for the bootstrap and CSS file-->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-B/GM4XqrwHnWXNOWMbloTmrYXZg10cakYGmpfsR/bbzQ6JAJI4ihuyADKLnBgrCe" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
-<body id = landingPage>
+<body id = register>
 
     <!-- Nav Bar-->
     <nav class="navbar navbar-translucent gap-4 md:navbar-expand w-50" style="margin: 0 auto;" data-bs-theme="dark">
@@ -63,10 +63,22 @@
     </div>
 
 
-    
+    <form method="POST" action="{{ url_for('register') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <input type="text" name="username" placeholder="username" class="form-control" value="{{ username }}">
+        
+        <input type="email" name="email" placeholder="Email" class="form-control" value="{{ email }}">
+
+        <input type="password" name="password" placeholder="Password" class="form-control">
+
+        <button class="btn btn-primary w-100">Register</button>
+
+    </form>
 
 
-    <h3>Unsure on how to make a secure password / passphrase? Click <a class="nav-link" href="{{ url_for('password_generator') }}">here, </a> or on the top of the website</h3>
+    <h3>Unsure on how to make a secure password / passphrase? 
+        Click <a class="intro" href="{{ url_for('password_generator') }}">here</a> or on the top of the website</h3>
 
 
     
