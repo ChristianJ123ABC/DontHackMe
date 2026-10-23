@@ -1,6 +1,6 @@
 -- MySQL dump 10.13  Distrib 8.0.46, for Win64 (x86_64)
 --
--- 
+-- Host: thomas.proxy.rlwy.net    Database: railway
 -- ------------------------------------------------------
 -- Server version	8.4.11
 
@@ -75,6 +75,33 @@ INSERT INTO `modules` VALUES (1,'social-engineering-phishing','Social Engineerin
 UNLOCK TABLES;
 
 --
+-- Table structure for table `recovery_codes`
+--
+
+DROP TABLE IF EXISTS `recovery_codes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `recovery_codes` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `code_hash` varchar(255) NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `recovery_codes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `recovery_codes`
+--
+
+LOCK TABLES `recovery_codes` WRITE;
+/*!40000 ALTER TABLE `recovery_codes` DISABLE KEYS */;
+/*!40000 ALTER TABLE `recovery_codes` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `url_scans`
 --
 
@@ -120,7 +147,6 @@ CREATE TABLE `users` (
   `hashed_password` varchar(255) NOT NULL,
   `twofa_confirmed` tinyint(1) NOT NULL DEFAULT '1',
   `twofa_secret` varchar(255) NOT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
   UNIQUE KEY `username` (`username`)
@@ -145,4 +171,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-20 20:02:28
+-- Dump completed on 2026-10-23 14:47:49

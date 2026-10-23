@@ -1,0 +1,79 @@
+<!-- Sources -->
+<!-- NAVBAR: 
+ https://getbootstrap.com/docs/6.0/components/navbar/?
+ https://getbootstrap.com/docs/6.0/components/nav-overflow/
+ https://www.w3schools.com/howto/howto_css_topnav_centered.asp
+ https://getbootstrap.com/docs/6.0/examples/
+ https://getbootstrap.com/docs/6.0/examples/heroes/
+ https://cdn-icons-png.flaticon.com/512/13215/13215372.png LOGO
+ -->
+
+<!-- STYLING:
+     https://stackoverflow.com/questions/32039846/can-i-use-css-to-add-a-bullet-point-to-any-element
+ -->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recovery Codes</title>
+
+    <!-- Links for the bootstrap and CSS file-->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-B/GM4XqrwHnWXNOWMbloTmrYXZg10cakYGmpfsR/bbzQ6JAJI4ihuyADKLnBgrCe" crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body id = recoveryCodes>
+
+    <!-- Nav Bar-->
+    <nav class="navbar navbar-translucent gap-4 md:navbar-expand w-50" style="margin: 0 auto;" data-bs-theme="dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <img src="{{ url_for('static', filename='uploads/logo.png') }}" alt="Logo" width="25" height="20" class="d-inline-block align-text-top">DontHackMe
+            </a>
+            <button class="btn-icon navbar-toggler" type="button" data-bs-toggle="drawer" data-bs-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon" aria-hidden="true"></span>
+            </button>
+            <dialog class="drawer drawer-end" tabindex="-1" id="navbarNavAltMarkup" aria-labelledby="navbarNavAltMarkupLabel">
+            <div class="drawer-header">
+                <h5 class="drawer-title" id="navbarNavAltMarkupLabel"> Menu </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="Close"></button>
+            </div>
+            <div class="drawer-body justify-content-center align-items">
+                <div class="nav navbar-nav  nav-underline gap-12 ">
+                    <a class="nav-link" href="#">Login</a>
+                    <a class="nav-link" href="{{ url_for('password_generator') }}">Password Generator</a>
+                    
+                </div>
+            </div>
+            </dialog>
+        </div>
+    </nav>
+
+    <!-- Flash Messages-->
+    <div class = "flash">
+        {% with messages = get_flashed_messages(with_categories = true)%}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class = "alert-{{ category }}"><h2>{{ message }}</h2></div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <h1>DISCLAIMER: THESE CODES WILL NOT BE SHOWN AGAIN.</h1>
+    <h1>Make sure to save these in a secure location like a password manager.</h1>
+    <ul>
+        {% for code in codes %}<li><p>{{ code }}<p></li>{% endfor %}
+    </ul>
+
+    <!-- NOTE: FILL IN ONCE LOGIN IS DONE-->
+    <h3>Got your codes stored safely? Then, click <a class="intro" href="#">here to be re-directed to the login page.</a></h3>
+    
+    
+    
+
+    <script type="module" src="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-1a/pXj49ZQ1aHEmrJ+gMw1otqoVsYwlEnlD8mIfY2TV03r20Y0CN7uqx1tQogjPL" crossorigin="anonymous"></script>
+</body>
+</html>
