@@ -123,7 +123,7 @@ def useRecoveryCode(userId, code):
     #Accepts formats: XXXX-XXXX, xxxx-xxxx, XXXX XXXX and xxxx xxxx
     normalisation = code.replace("-", "").replace(" ", "").upper()
 
-    if len(normalisation) != 9:
+    if len(normalisation) != 8:
         return False
     correctCode = normalisation[:4] + "-" + normalisation[4:]
 
@@ -421,6 +421,7 @@ def recovery():
     if useRecoveryCode(userId, request.form["code"]):
         session.clear()
         session["user_id"] = userId
+        session.permanent = True
         return redirect(url_for("dashboard"))
 
     flash("Invalid recovery code", "danger")

@@ -145,7 +145,7 @@ CREATE TABLE `users` (
   `username` varchar(50) NOT NULL,
   `email` varchar(255) NOT NULL,
   `hashed_password` varchar(255) NOT NULL,
-  `twofa_confirmed` tinyint(1) NOT NULL DEFAULT '1',
+  `twofa_confirmed` tinyint(1) NOT NULL DEFAULT '0',
   `twofa_secret` varchar(255) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
