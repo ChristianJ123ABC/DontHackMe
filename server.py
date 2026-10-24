@@ -32,6 +32,7 @@
 #Retrieve latest user id for 2FA verification https://stackoverflow.com/questions/26782746/how-to-get-the-last-row-id-on-update
 #Recovery codes / expiring 2FA verification https://dev.to/ayinedjimi-consultants/implementing-totp-two-factor-authentication-from-scratch-in-python-4j9
 #Counting remaining rows https://stackoverflow.com/questions/68534871/counting-all-records-in-table-and-putting-it-into-a-variable-inside-mysql-itself
+#Guidelines RFC 6238 https://www.rfc-editor.org/info/rfc6238/
 
 
 import re, io, re, string, pyotp, qrcode, requests, os, base64, werkzeug, gunicorn, secrets, time
@@ -410,7 +411,8 @@ def register_2fa():
 @app.route("/recovery", methods = ["GET", "POST"])
 @rateLimiter.limit("5 per minute")
 def recovery():
-    userId = session.get("pending_user_id")
+    userId = session["pending_user_id"]
+    code = request.form["code"]
 
     if userId is None:
         return redirect(url_for("login"))
@@ -418,7 +420,7 @@ def recovery():
     if request.method == "GET":
         return render_template("recovery.html")
 
-    if useRecoveryCode(userId, request.form["code"]):
+    if useRecoveryCode(userId, code):
         session.clear()
         session["user_id"] = userId
         session.permanent = True
@@ -439,8 +441,9 @@ def regenerateCodes():
     cursor = mysql.connection.cursor()
     cursor.execute("SELECT hashed_password FROM users where id = %s", (session["user_id"],))
     user = cursor.fetchone()
+    password = request.form["password"]
 
-    if not user or not check_password_hash(user["hashed_password"], request.form["password"]):
+    if not user or not check_password_hash(user["hashed_password"], password):
         cursor.close()
         flash("Incorrect password", "danger")
         return redirect(url_for("dashboard"))
