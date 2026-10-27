@@ -30,9 +30,10 @@
 #Two Factor Authentication
 #https://www.freecodecamp.org/news/how-to-implement-two-factor-authentication-in-your-flask-app/
 #Retrieve latest user id for 2FA verification https://stackoverflow.com/questions/26782746/how-to-get-the-last-row-id-on-update
-#Recovery codes / expiring 2FA verification https://dev.to/ayinedjimi-consultants/implementing-totp-two-factor-authentication-from-scratch-in-python-4j9
+#Recovery codes / expiring 2FA verification https://dev.to/ayinedjimi-consultants/implementing-totp-two-factor-authentication-from-scratch-in-python-4j9 + https://stackoverflow.com/questions/53443959/set-a-python-program-to-expire-after-a-certain-number-of-days
 #Counting remaining rows https://stackoverflow.com/questions/68534871/counting-all-records-in-table-and-putting-it-into-a-variable-inside-mysql-itself
 #Guidelines RFC 6238 https://www.rfc-editor.org/info/rfc6238/
+
 
 
 import re, io, re, string, pyotp, qrcode, requests, os, base64, werkzeug, gunicorn, secrets, time
@@ -359,7 +360,53 @@ def register():
         #Creating Temporary details used to identify the user and confirm 2FA TOTP code, but not allow them into the dashboard.
         session.clear()
         session["pending_user_id"] = pendingId
+        session["expiry"] = (datetime.now()+timedelta(minutes=15)).timestamp() #Gives the user 15 minutes to activate 2FA before expiring the session.
         return redirect(url_for("register_2fa")) #/register/2fa
+
+
+@app.route("/register/2fa", methods = ["GET", "POST"])
+@rateLimiter.limit("10 per minute")
+def register_2fa():
+
+    if "pending_user_id" not in session or datetime.now().timestamp() > session.get("expiry",0):
+        return redirect(url_for("login"))
+
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT id, email, twofa_confirmed, twofa_secret FROM users WHERE id = %s", (session["pending_user_id"],))
+    user = cursor.fetchone()
+
+    if not user:
+        cursor.close()
+        session.clear()
+        return redirect(url_for("login"))
+
+    #If user trys to access this page with 2FA already enabled
+    if user["twofa_confirmed"] == 1:
+        cursor.close()
+        return redirect(url_for("login_2fa")) #/login/2fa
+
+    secret = decrypt2fa(user["twofa_secret"])
+
+    if request.method == "POST":
+        if pyotp.TOTP(secret).verify(request.form["code"]):
+            cursor.execute("UPDATE users set twofa_confirmed = 1 WHERE id = %s", (user["id"],))
+            codes = generateRecoveryCodes(user["id"])
+            mysql.connection.commit()
+            cursor.close()
+            session.clear()
+            flash("Account created. Make sure to save these recovery codes incase you lose your 2FA device. These codes are single use.", "success")
+            return render_template("recovery_codes.html", codes=codes) 
+        flash("Invalid code. Try again", "danger")
+
+    cursor.close()
+
+    uri = pyotp.totp.TOTP(secret).provisioning_uri(name=user["email"], issuer_name="DontHackMe")
+    img = qrcode.make(uri)
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    qr_b64 = base64.b64encode(buf.getvalue()).decode()
+
+    return render_template("register_2fa.html", qr_code=qr_b64, secret=secret) 
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -375,7 +422,7 @@ def login():
     password = request.form["password"]
 
     cursor = mysql.connection.cursor()
-    cursor.exsecute("SELECT email from users WHERE email = %s", (email,))
+    cursor.execute("SELECT email from users WHERE email = %s", (email,))
     user = cursor.fetchone()
     cursor.close()
 
@@ -419,56 +466,12 @@ def login_2fa():
 
 
 
-@app.route("/register/2fa", methods = ["GET", "POST"])
-@rateLimiter.limit("10 per minute")
-def register_2fa():
-
-    if "pending_user_id" not in session:
-        return redirect(url_for("login"))
-
-    cursor = mysql.connection.cursor()
-    cursor.execute("SELECT id, email, twofa_confirmed, twofa_secret FROM users WHERE id = %s", (session["pending_user_id"],))
-    user = cursor.fetchone()
-
-    if not user:
-        cursor.close()
-        session.clear()
-        return redirect(url_for("login"))
-
-    #If user trys to access this page with 2FA already enabled
-    if user["twofa_confirmed"] == 1:
-        cursor.close()
-        return redirect(url_for("login_2fa")) #/login/2fa
-
-    secret = decrypt2fa(user["twofa_secret"])
-
-    if request.method == "POST":
-        if pyotp.TOTP(secret).verify(request.form["code"]):
-            cursor.execute("UPDATE users set twofa_confirmed = 1 WHERE id = %s", (user["id"],))
-            codes = generateRecoveryCodes(user["id"])
-            mysql.connection.commit()
-            cursor.close()
-            session.clear()
-            flash("Account created. Make sure to save these recovery codes incase you lose your 2FA device. These codes are single use.", "success")
-            return render_template("recovery_codes.html", codes=codes) 
-        flash("Invalid code. Try again", "danger")
-
-    cursor.close()
-
-    uri = pyotp.totp.TOTP(secret).provisioning_uri(name=user["email"], issuer_name="DontHackMe")
-    img = qrcode.make(uri)
-    buf = BytesIO()
-    img.save(buf, format="PNG")
-    qr_b64 = base64.b64encode(buf.getvalue()).decode()
-
-    return render_template("register_2fa.html", qr_code=qr_b64, secret=secret) 
-
-
 #Alternative way to sign into account IF you lose your authenticator
 @app.route("/recovery", methods = ["GET", "POST"])
 @rateLimiter.limit("5 per minute")
 def recovery():
     userId = session["pending_user_id"]
+    
     code = request.form["code"]
 
     if userId is None:
