@@ -33,6 +33,9 @@
                             <a class="nav-link" href="#">URL Scanner</a>
                             <a class="nav-link" href="{{ url_for('password_generator') }}">Password Generator</a>
                             <a class="nav-link" href="{{ url_for('logout') }}">Log out</a>
+                        {% elif request.endpoint == 'recovery_codes' or request.endpoint == 'register_2fa'%}
+                            <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+                            <a class="nav-link" href="{{ url_for('password_generator') }}">Password Generator</a>
                         {% else %}
                             <a class="nav-link" href="#">Login</a>
                             <a class="nav-link" href="{{ url_for('logout') }}">Sign Up</a>

@@ -94,11 +94,11 @@ def home():
 
 
 
+
+
 # - - - - - - - - - - 
 # FUNCTIONS FOR VALIDATIONS / FEATURES (NOTE: MOVE TO SEPARATE .py LATER ON)
 # - - - - - - - - - - 
-
-
 
 # #
 #  2FA RECOVERY CODES
@@ -285,9 +285,8 @@ def generatePassword(length, upperChar, lowerChar, digits, symbols):
 # FUNCTIONALITY OF THE PROJECT
 # - - - - - - - - - - 
 
-
 # #
-#  USER AUTHENTICATION (ORDER: Password Generator, Register, 2FA Verification, Login, 2FA Login, 2FA Recovery Codes)
+#  USER AUTHENTICATION (ORDER: Password Generator, Register, 2FA Verification, Login, 2FA Login, 2FA Recovery Codes, Logout)
 # #
 
 @app.route("/password_generator")
@@ -513,6 +512,10 @@ def regenerateCodes():
 
     return render_template("recovery_codes.html", codes=codes)
 
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 #makes it so that it only runs the app when executed
 if __name__ == "__main__":
