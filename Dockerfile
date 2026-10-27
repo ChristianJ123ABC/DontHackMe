@@ -43,12 +43,14 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=bind,source=requirements.txt,target=requirements.txt \
     python -m pip install -r requirements.txt
 
+COPY . .
+
+# Copy the source code into the container.
+RUN mkdir -p /app/static/uploads && chown -R appuser:appuser /app/static/uploads
+
 # Switch to the non-privileged user to run the application.
 USER appuser
 
-# Copy the source code into the container.
-COPY . .
-RUN mkdir -p /app/static/uploads && chown -R appuser:appuser /app/static/uploads
 
 # Expose the port that the application listens on.
 EXPOSE 5000
