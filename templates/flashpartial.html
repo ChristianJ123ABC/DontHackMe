@@ -1,0 +1,17 @@
+<!--
+    Jinja Templates for Partials
+    #Base template: https://jinja.palletsprojects.com/en/stable/templates/
+    #Flask templates: https://flask.palletsprojects.com/en/stable/tutorial/templates/
+    #https://www.geeksforgeeks.org/python/placeholders-in-jinja2-template-python/
+-->
+
+<!-- Flash Messages-->
+<div class = "flash">
+    {% with messages = get_flashed_messages(with_categories = true)%}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class = "alert-{{ category }}"><h2>{{ message }}</h2></div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+</div>

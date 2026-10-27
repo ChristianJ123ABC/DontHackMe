@@ -287,7 +287,7 @@ def generatePassword(length, upperChar, lowerChar, digits, symbols):
 
 
 # #
-#  USER AUTHENTICATION (ORDER: Password Generator, Register, 2FA Verification, 2FA Recovery Codes, Login)
+#  USER AUTHENTICATION (ORDER: Password Generator, Register, 2FA Verification, Login, 2FA Login, 2FA Recovery Codes)
 # #
 
 @app.route("/password_generator")
@@ -332,7 +332,6 @@ def generate():
 def register():
 
     if "user_id" in session:
-        flash("You are currently logged in.", "warning")
         return redirect(url_for("dashboard"))
 
     elif request.method == "GET":
@@ -362,6 +361,64 @@ def register():
         session.clear()
         session["pending_user_id"] = pendingId
         return redirect(url_for("register_2fa")) #/register/2fa
+
+
+@app.route("/login", methods=["GET", "POST"])
+@rateLimiter.limit("10 per minute")
+def login():
+    if "user_id" in session:
+        return redirect(url_for("dashboard"))
+
+    if request.method == "GET":
+        return render_template("login.html")
+
+    email = request.form["email"]
+    password = request.form["password"]
+
+    cursor = mysql.connection.cursor()
+    cursor.exsecute("SELECT email from users WHERE email = %s", (email,))
+    user = cursor.fetchone()
+    cursor.close()
+
+    if not user or not check_password_hash(user["hashed_password"], password):
+        flash("Invalid email or password, please try again", "danger")
+        return render_template("login.html")
+
+    #Redirect to 2FA when details are correct, then assign temporary details to assign identity to the user, but not allow access to the page.
+    session.clear()
+    session["pending_user_id"] = user["id"]
+
+    #If register was abandoned at the QR code, this sends them back to enable 2FA.
+    if user["twofa_confirmed"] == 0:
+        return redirect(url_for("login_2fa")) #/login/2fa
+
+@app.route("/login/2fa", methods=["GET", "POST"])
+@rateLimiter.limit("10 per minute")
+def login_2fa():
+
+    if "pending_user_id" not in session:
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        cursor = mysql.connection.cursor()
+        cursor.execute("SELECT id FROM users where id = %s", (session["pending_user_id"]))
+        user = cursor.fetchone()
+        cursor.close()
+        secret = decrypt2fa(user["2fa_secret"])
+
+        #Compares form input to TOTP authenticator code
+        if user and user["twofa_confirmed"] == 1 and pyotp.TOTP(secret).verify(request.form["code"]):
+            session.clear()
+            session["user_id"] = user["id"]
+            session.permanent = True
+            return redirect(url_for("dashboard"))
+
+        flash("Invalid code", "danger")
+
+    return render_template("2fa_login.html")
+
+
+
 
 @app.route("/register/2fa", methods = ["GET", "POST"])
 @rateLimiter.limit("10 per minute")
@@ -408,6 +465,7 @@ def register_2fa():
     return render_template("register_2fa.html", qr_code=qr_b64, secret=secret) 
 
 
+#Alternative way to sign into account IF you lose your authenticator
 @app.route("/recovery", methods = ["GET", "POST"])
 @rateLimiter.limit("5 per minute")
 def recovery():
@@ -431,6 +489,7 @@ def recovery():
 
 
 #NOTE: MAKE SECURITY SECTION / SETTINGS THAT HOLDS BOTH THIS AND DELETE ACCOUNT. ASKS FOR PASSWORD FORM TO GENERATE THE NEW CODES
+#Regenerates security codes
 @app.route("/regenerateCodes", methods=["POST"])
 @rateLimiter.limit("5 per minute")
 def regenerateCodes():
