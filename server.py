@@ -127,6 +127,7 @@ def useRecoveryCode(userId, code):
 
     if len(normalisation) != 8:
         return False
+    
     correctCode = normalisation[:4] + "-" + normalisation[4:]
 
     cursor = mysql.connection.cursor()
@@ -134,13 +135,11 @@ def useRecoveryCode(userId, code):
     rows = cursor.fetchall()
 
     for row in rows:
-        if check_password_hash(row["code_hash"], code):
+        if check_password_hash(row["code_hash"], correctCode):
             cursor.execute("DELETE FROM recovery_codes WHERE id = %s", (row["id"],))
             mysql.connection.commit()
             cursor.close()
-            remaining = len(rows) - 1
-            flash("Recovery code: "+correctCode+" has been used up. There are now "+remaining+" codes remaining.")
-            return True
+            return correctCode, len(rows)-1
         
     cursor.close()
     return False
@@ -482,6 +481,7 @@ def login_2fa():
 
         flash("Invalid code", "danger")
 
+    return render_template("login_2fa.html")
     
 
 
@@ -492,8 +492,6 @@ def login_2fa():
 @rateLimiter.limit("5 per minute")
 def recovery():
     userId = session["pending_user_id"]
-    
-    code = request.form["code"]
 
     if userId is None:
         return redirect(url_for("login"))
@@ -501,12 +499,17 @@ def recovery():
     if request.method == "GET":
         return render_template("recovery.html")
 
-    if useRecoveryCode(userId, code):
+    result =  useRecoveryCode(userId, request.form["code"])
+    
+    if result:
+        code, remaining = result #Assigns correctCode and remaining rows left
         session.clear()
         session["user_id"] = userId
         session.permanent = True
+        flash(f"Recovery code {code} has been used. {remaining} codes remaining.", "success")
         return redirect(url_for("dashboard"))
 
+    
     flash("Invalid recovery code", "danger")
     return render_template("recovery.html")
 
