@@ -34,12 +34,13 @@
 #Counting remaining rows https://stackoverflow.com/questions/68534871/counting-all-records-in-table-and-putting-it-into-a-variable-inside-mysql-itself
 #Guidelines RFC 6238 https://www.rfc-editor.org/info/rfc6238/
 
-
+#Exception Handling
+# CSRF Errors https://flask-wtf.readthedocs.io/en/latest/csrf/
 
 import re, io, re, string, pyotp, qrcode, requests, os, base64, werkzeug, gunicorn, secrets, time
 from io import BytesIO
 from flask import Flask, render_template, redirect, url_for, request, session, flash
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFProtect, CSRFError
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mysqldb import MySQL
 from datetime import timedelta, datetime
@@ -96,7 +97,6 @@ def home():
 
 
 
-
 # - - - - - - - - - - 
 # FUNCTIONS FOR VALIDATIONS / FEATURES (NOTE: MOVE TO SEPARATE .py LATER ON)
 # - - - - - - - - - - 
@@ -127,6 +127,7 @@ def useRecoveryCode(userId, code):
 
     if len(normalisation) != 8:
         return False
+    
     correctCode = normalisation[:4] + "-" + normalisation[4:]
 
     cursor = mysql.connection.cursor()
@@ -134,13 +135,11 @@ def useRecoveryCode(userId, code):
     rows = cursor.fetchall()
 
     for row in rows:
-        if check_password_hash(row["code_hash"], code):
+        if check_password_hash(row["code_hash"], correctCode):
             cursor.execute("DELETE FROM recovery_codes WHERE id = %s", (row["id"],))
             mysql.connection.commit()
             cursor.close()
-            remaining = len(rows) - 1
-            flash("Recovery code: "+correctCode+" has been used up. There are now "+remaining+" codes remaining.")
-            return True
+            return correctCode, len(rows)-1
         
     cursor.close()
     return False
@@ -191,20 +190,32 @@ def failPasswordPolicy(password):
 # #
 # EXCEPTION HANDLING FUNCTIONS 
 # # 
-#Exceeding rate limit
+
+#Exceeding rate limit: 429 Too Many Requests
 @app.errorhandler(werkzeug.exceptions.TooManyRequests)
 def handle_rate_limit(e):
-    return "429 Too Many Requests: Too many attempts.", 429
-  
+    flash(e.description, "warning")
+    return redirect(request.referrer)
+
+#404 Page not found
 @app.errorhandler(werkzeug.exceptions.NotFound)
 def handle_notfound_request(e):
-    return '404 Page not found', 404
+    flash(e.description, "warning")
+    return redirect(request.referrer)
 
-#Catch general errors
+
+#500 Internal Server Error
 @app.errorhandler(werkzeug.exceptions.InternalServerError)
 def handle_server_error(e):
-   return "500 Internal Server Error: Conflict has occurred.", 500
+   flash(e.description, "warning")
+   return redirect(request.referrer)
 
+
+#Catch bad requests / CSRF errors
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    flash(e.description, "warning")
+    return redirect(request.referrer)
 
 # #
 # PASSWORD / PASSPHRASE GENERATOR (NIST SP800-63B-4 GUIDELINES) (no complexity guidelines, minimum 15 characters, maximum 128 characters and CSPRNG numbers/word choice)
@@ -286,9 +297,9 @@ def generatePassword(length, upperChar, lowerChar, digits, symbols):
 # FUNCTIONALITY OF THE PROJECT
 # - - - - - - - - - - 
 
-# #
+# - - - - - - - - - - 
 #  USER AUTHENTICATION (ORDER: Password Generator, Register, 2FA Verification, Login, 2FA Login, 2FA Recovery Codes, Logout)
-# #
+# - - - - - - - - - -
 
 @app.route("/password_generator")
 def password_generator():
@@ -360,16 +371,19 @@ def register():
         #Creating Temporary details used to identify the user and confirm 2FA TOTP code, but not allow them into the dashboard.
         session.clear()
         session["pending_user_id"] = pendingId
-        session["expiry"] = (datetime.now()+timedelta(minutes=15)).timestamp() #Gives the user 15 minutes to activate 2FA before expiring the session.
         return redirect(url_for("register_2fa")) #/register/2fa
 
 
 @app.route("/register/2fa", methods = ["GET", "POST"])
 @rateLimiter.limit("10 per minute")
 def register_2fa():
-
-    if "pending_user_id" not in session or datetime.now().timestamp() > session.get("expiry",0):
+    session["expiry"] = (datetime.now()+timedelta(minutes=15)).timestamp() #Gives the user 15 minutes to activate 2FA before expiring the session.
+    if datetime.now().timestamp() > session.get("expiry",0):
+        session.clear()
+        flash("Expiration time run out, you can login in with your details but you still have to activate 2FA", "warning")
         return redirect(url_for("login"))
+
+    
 
     cursor = mysql.connection.cursor()
     cursor.execute("SELECT id, email, twofa_confirmed, twofa_secret FROM users WHERE id = %s", (session["pending_user_id"],))
@@ -414,15 +428,17 @@ def register_2fa():
 def login():
     if "user_id" in session:
         return redirect(url_for("dashboard"))
-
+    
     if request.method == "GET":
         return render_template("login.html")
+
+    
 
     email = request.form["email"]
     password = request.form["password"]
 
     cursor = mysql.connection.cursor()
-    cursor.execute("SELECT email from users WHERE email = %s", (email,))
+    cursor.execute("SELECT email,hashed_password,id,twofa_confirmed,twofa_secret from users WHERE email = %s", (email,))
     user = cursor.fetchone()
     cursor.close()
 
@@ -436,7 +452,9 @@ def login():
 
     #If register was abandoned at the QR code, this sends them back to enable 2FA.
     if user["twofa_confirmed"] == 0:
-        return redirect(url_for("login_2fa")) #/login/2fa
+        return redirect(url_for("register_2fa")) #/register/2fa
+
+    return render_template("login_2fa.html")
 
 @app.route("/login/2fa", methods=["GET", "POST"])
 @rateLimiter.limit("10 per minute")
@@ -447,21 +465,24 @@ def login_2fa():
 
     if request.method == "POST":
         cursor = mysql.connection.cursor()
-        cursor.execute("SELECT id FROM users where id = %s", (session["pending_user_id"]))
+        cursor.execute("SELECT username,email,hashed_password,id,twofa_confirmed,twofa_secret FROM users where id = %s", (session["pending_user_id"],))
         user = cursor.fetchone()
         cursor.close()
-        secret = decrypt2fa(user["2fa_secret"])
+        secret = decrypt2fa(user["twofa_secret"])
 
         #Compares form input to TOTP authenticator code
         if user and user["twofa_confirmed"] == 1 and pyotp.TOTP(secret).verify(request.form["code"]):
             session.clear()
             session["user_id"] = user["id"]
+            session["email"] = user["email"]
+            session["username"] = user["username"]
             session.permanent = True
             return redirect(url_for("dashboard"))
 
         flash("Invalid code", "danger")
 
-    return render_template("2fa_login.html")
+    return render_template("login_2fa.html")
+    
 
 
 
@@ -471,8 +492,6 @@ def login_2fa():
 @rateLimiter.limit("5 per minute")
 def recovery():
     userId = session["pending_user_id"]
-    
-    code = request.form["code"]
 
     if userId is None:
         return redirect(url_for("login"))
@@ -480,12 +499,17 @@ def recovery():
     if request.method == "GET":
         return render_template("recovery.html")
 
-    if useRecoveryCode(userId, code):
+    result =  useRecoveryCode(userId, request.form["code"])
+    
+    if result:
+        code, remaining = result #Assigns correctCode and remaining rows left
         session.clear()
         session["user_id"] = userId
         session.permanent = True
+        flash(f"Recovery code {code} has been used. {remaining} codes remaining.", "success")
         return redirect(url_for("dashboard"))
 
+    
     flash("Invalid recovery code", "danger")
     return render_template("recovery.html")
 
@@ -519,6 +543,27 @@ def regenerateCodes():
 def logout():
     session.clear()
     return redirect(url_for("login"))
+
+
+
+
+
+
+
+
+
+
+# - - - - - - - - - - 
+#  DASHBOARD, MODULES, TESTS, SCANNER
+# - - - - - - - - - -
+@app.route("/dashboard")
+def dashboard():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    return render_template("dashboard.html")
+
+
 
 #makes it so that it only runs the app when executed
 if __name__ == "__main__":

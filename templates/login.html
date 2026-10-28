@@ -1,0 +1,53 @@
+<!-- Sources -->
+<!-- NAVBAR: 
+ https://getbootstrap.com/docs/6.0/components/navbar/?
+ https://getbootstrap.com/docs/6.0/components/nav-overflow/
+ https://www.w3schools.com/howto/howto_css_topnav_centered.asp
+ https://getbootstrap.com/docs/6.0/examples/
+ https://getbootstrap.com/docs/6.0/examples/heroes/
+ https://cdn-icons-png.flaticon.com/512/13215/13215372.png LOGO
+ -->
+
+<!-- STYLING:
+     https://stackoverflow.com/questions/32039846/can-i-use-css-to-add-a-bullet-point-to-any-element
+ -->
+ <!--
+    Jinja Templates for Partials
+    #Base template: https://jinja.palletsprojects.com/en/stable/templates/
+    #Flask templates: https://flask.palletsprojects.com/en/stable/tutorial/templates/
+    #https://www.geeksforgeeks.org/python/placeholders-in-jinja2-template-python/
+-->
+
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+{% block body_id %}login{% endblock %}
+
+{% block content %}
+    
+    <div class = "form">
+        <form method="POST" action="{{ url_for('login') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <label for="email">Email Address</label>
+            <input type="email" name="email" class="form-control">
+            <br>
+            <label for="password">Password</label>
+            <input type="password" name="password" class="form-control">
+            <br>
+            <button class="btn btn-primary w-100">Login</button>
+
+        </form>
+    </div>
+
+
+    <h2>Unsure on how to make a secure password / passphrase? 
+        Click <a class="intro" href="{{ url_for('password_generator') }}">here</a> or on the top of the website</h2>
+
+  
+    
+{% endblock %}
+    
+{% block scripts %}
+{% endblock %}
+
+

@@ -16,7 +16,7 @@
 }
 
 .alert-success {
-    border-color: #28a745;  
+    color: #28a745;  
     background-color:#f8f8f8
 } 
 .alert-danger { 
@@ -25,7 +25,7 @@
     color: white;
 }
 .alert-warning { 
-    border-color: #ffc107;
+    color: #ffc107;
     background-color: black;
  } 
 
@@ -59,7 +59,7 @@ body{
     text-align: center;
 }
 
- h2 {
+#landingPage h2 {
     font-size: 2rem;
     margin-bottom: 20px;
     font-weight: bold;
@@ -97,4 +97,39 @@ body{
 }
 
 
+
+/* Centers every form into the middle of the screen */
+.form {
+  width: 100%;
+  max-width: 400px;
+  margin: 250px auto 16px;
+  padding: 20px;
+  border-radius: 8px;
+  font-size: 20px;
+}
+
+h2, button{
+    text-align: center;
+}
+
+/*Centers the button to change to passphrase / password generator */
+.changePassword{
+    width: 100%;
+    max-width: 350px;
+    margin: auto;
+    padding: 20px;
+    border-radius: 8px;
+    font-size: 20px;
+}
+
+/*
+Eliminate Flash of Unstyled Content (FOUC)
+Source - https://stackoverflow.com/a/53364612
+
+*/
+
+html {
+    visibility: visible;
+    opacity: 1;
+}
 
