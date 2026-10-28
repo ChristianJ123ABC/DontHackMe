@@ -371,13 +371,14 @@ def register():
         #Creating Temporary details used to identify the user and confirm 2FA TOTP code, but not allow them into the dashboard.
         session.clear()
         session["pending_user_id"] = pendingId
+        session["expiry"] = (datetime.now()+timedelta(minutes=15)).timestamp() #Gives the user 15 minutes to activate 2FA before expiring the session.
+
         return redirect(url_for("register_2fa")) #/register/2fa
 
 
 @app.route("/register/2fa", methods = ["GET", "POST"])
 @rateLimiter.limit("10 per minute")
 def register_2fa():
-    session["expiry"] = (datetime.now()+timedelta(minutes=15)).timestamp() #Gives the user 15 minutes to activate 2FA before expiring the session.
     if datetime.now().timestamp() > session.get("expiry",0):
         session.clear()
         flash("Expiration time run out, you can login in with your details but you still have to activate 2FA", "warning")
@@ -450,8 +451,11 @@ def login():
     session.clear()
     session["pending_user_id"] = user["id"]
 
-    #If register was abandoned at the QR code, this sends them back to enable 2FA.
+    #If register was abandoned at the QR code, redo the process to make them verify 2FA again.
     if user["twofa_confirmed"] == 0:
+        session.clear()
+        session["pending_user_id"] = user["id"]
+        session["expiry"] = (datetime.now()+timedelta(minutes=15)).timestamp() #Gives the user 15 minutes to activate 2FA before expiring the session.
         return redirect(url_for("register_2fa")) #/register/2fa
 
     return render_template("login_2fa.html")
