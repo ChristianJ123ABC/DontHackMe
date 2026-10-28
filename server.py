@@ -195,20 +195,20 @@ def failPasswordPolicy(password):
 @app.errorhandler(werkzeug.exceptions.TooManyRequests)
 def handle_rate_limit(e):
     flash(e.description, "warning")
-    return redirect(request.referrer)
+    return redirect(request.referrer),429
 
 #404 Page not found
 @app.errorhandler(werkzeug.exceptions.NotFound)
 def handle_notfound_request(e):
     flash(e.description, "warning")
-    return redirect(request.referrer)
+    return "404 Page Not Found",404
 
 
 #500 Internal Server Error
 @app.errorhandler(werkzeug.exceptions.InternalServerError)
 def handle_server_error(e):
    flash(e.description, "warning")
-   return redirect(request.referrer)
+   return "500 Internal Server Error",500
 
 
 #Catch bad requests / CSRF errors
