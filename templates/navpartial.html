@@ -30,7 +30,7 @@
                     <div class="nav navbar-nav  nav-underline gap-12 ">
                         {% if session.user_id %}
                             <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
-                            <a class="nav-link" href="#">URL Scanner</a>
+                            <a class="nav-link" href="#">URL Scanner</a> <!-- NOTE: ADD IN ONCE COMPLETE-->
                             <a class="nav-link" href="{{ url_for('password_generator') }}">Password Generator</a>
                             <a class="nav-link" href="{{ url_for('logout') }}">Log out</a>
                         {% elif request.endpoint == 'recovery_codes' or request.endpoint == 'register_2fa'%}

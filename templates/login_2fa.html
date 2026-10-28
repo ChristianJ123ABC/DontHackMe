@@ -1,0 +1,46 @@
+<!-- Sources -->
+<!-- NAVBAR: 
+ https://getbootstrap.com/docs/6.0/components/navbar/?
+ https://getbootstrap.com/docs/6.0/components/nav-overflow/
+ https://www.w3schools.com/howto/howto_css_topnav_centered.asp
+ https://getbootstrap.com/docs/6.0/examples/
+ https://getbootstrap.com/docs/6.0/examples/heroes/
+ https://cdn-icons-png.flaticon.com/512/13215/13215372.png LOGO
+ -->
+
+<!-- STYLING:
+     https://stackoverflow.com/questions/32039846/can-i-use-css-to-add-a-bullet-point-to-any-element
+ -->
+ <!--
+    Jinja Templates for Partials
+    #Base template: https://jinja.palletsprojects.com/en/stable/templates/
+    #Flask templates: https://flask.palletsprojects.com/en/stable/tutorial/templates/
+    #https://www.geeksforgeeks.org/python/placeholders-in-jinja2-template-python/
+-->
+
+{% extends "base.html" %}
+{% block title %}2FA Login{% endblock %}
+{% block body_id %}2faLogin{% endblock %}
+
+{% block content %}
+    <form method="POST" action="{{ url_for('login_2fa') }}" class="form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <label for="code">6 digit code from authenticator app</label>
+        <input type="code" name="code" inputmode="numeric" maxlength="6" class="form-control">
+        <br>
+        <button class="btn btn-primary w-100">Login</button>
+
+    </form>
+
+
+    <h3>Lost access to your authenticator? Use one of your recovery codes <a href="{{ url_for('recovery')}}">here.</a></h3>
+
+  
+    
+{% endblock %}
+    
+{% block scripts %}
+{% endblock %}
+
+
