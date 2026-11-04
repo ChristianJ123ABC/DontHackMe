@@ -72,6 +72,7 @@ rateLimiter = Limiter(
     get_remote_address,
     app=app,
     storage_uri="memory://",
+    
 )
 
 f = Fernet(os.getenv("TOTP_ENCRYPTION_KEY").encode()) #Uses a base64 encoded, 32 byte key from environment variables
@@ -195,7 +196,7 @@ def isPasswordValid(password):
 @app.errorhandler(werkzeug.exceptions.TooManyRequests)
 def handle_rate_limit(e):
     flash(e.description, "warning")
-    return redirect(request.referrer),429
+    return "429 Too Many Requests, try again later",429
 
 #404 Page not found
 @app.errorhandler(werkzeug.exceptions.NotFound)
@@ -339,7 +340,7 @@ def generate():
 
 
 @app.route("/register", methods=["GET", "POST"])
-@rateLimiter.limit("10 per minute")
+@rateLimiter.limit("5 per minute; 20 per hour", methods=["POST"])
 def register():
 
     if "user_id" in session:
@@ -349,7 +350,7 @@ def register():
         return render_template("register.html")
 
     username = request.form["username"].strip()
-    password = request.form["password"]
+    password = request.form["password"].strip()
     email = request.form["email"].strip().lower()
     hashPass = generate_password_hash(password)
 
@@ -381,7 +382,7 @@ def register():
 
 
 @app.route("/register/2fa", methods = ["GET", "POST"])
-@rateLimiter.limit("10 per minute")
+@rateLimiter.limit("5 per minute; 20 per hour", methods=["POST"])
 def register_2fa():
     if datetime.now().timestamp() > session.get("expiry",0):
         session.clear()
@@ -429,7 +430,7 @@ def register_2fa():
 
 
 @app.route("/login", methods=["GET", "POST"])
-@rateLimiter.limit("10 per minute")
+@rateLimiter.limit("5 per minute; 30 per hour", methods=["POST"])
 def login():
     if "user_id" in session:
         return redirect(url_for("dashboard"))
@@ -439,8 +440,8 @@ def login():
 
     
 
-    email = request.form["email"]
-    password = request.form["password"]
+    email = request.form["email"].strip()
+    password = request.form["password"].strip()
 
     cursor = mysql.connection.cursor()
     cursor.execute("SELECT email,hashed_password,id,twofa_confirmed,twofa_secret from users WHERE email = %s", (email,))
@@ -465,7 +466,7 @@ def login():
     return render_template("login_2fa.html")
 
 @app.route("/login/2fa", methods=["GET", "POST"])
-@rateLimiter.limit("10 per minute")
+@rateLimiter.limit("5 per minute; 20 per hour", methods=["POST"])
 def login_2fa():
 
     if "pending_user_id" not in session:
@@ -506,9 +507,9 @@ def login_2fa():
 
 #Alternative way to sign into account IF you lose your authenticator
 @app.route("/recovery", methods = ["GET", "POST"])
-@rateLimiter.limit("5 per minute")
+@rateLimiter.limit("5 per minute; 30 per hour", methods=["POST"])
 def recovery():
-    userId = session["pending_user_id"]
+    userId = session.get("pending_user_id")
 
     if userId is None:
         return redirect(url_for("login"))
@@ -523,6 +524,13 @@ def recovery():
         session.clear()
         session["user_id"] = userId
         session.permanent = True
+        cursor = mysql.connection.cursor()
+        cursor.execute("SELECT password_reset_at FROM users WHERE id = %s", (session["user_id"],))
+        row = cursor.fetchone()
+        cursor.close()
+        if row and row["password_reset_at"]:
+            flash("Your password was last reset on " + row["password_reset_at"].strftime("%Y-%m-%d %H:%M:%S") + ". If this was not you, please reset your password immediately.", "warning")
+            
         flash(f"Recovery code {code} has been used. {remaining} codes remaining.", "success")
         return redirect(url_for("dashboard"))
 
@@ -534,7 +542,7 @@ def recovery():
 #NOTE: MAKE SECURITY SECTION / SETTINGS THAT HOLDS BOTH THIS AND DELETE ACCOUNT. ASKS FOR PASSWORD FORM TO GENERATE THE NEW CODES
 #Regenerates security codes
 @app.route("/regenerateCodes", methods=["POST"])
-@rateLimiter.limit("5 per minute")
+@rateLimiter.limit("5 per hour")
 def regenerateCodes():
     if "user_id" not in session:
         flash("You need to be logged in.", "danger")
@@ -558,7 +566,7 @@ def regenerateCodes():
 
 
 @app.route("/forgot-password", methods = ["GET", "POST"])
-@rateLimiter.limit("5 per hour")
+@rateLimiter.limit("5 per minute; 10 per hour", methods=["POST"])
 def forgot_password():
     if request.method == "POST":
         details = request.form["details"].strip().lower()
@@ -604,7 +612,7 @@ def forgot_password():
     return render_template("forgot_password.html")
 
 @app.route("/reset-password", methods = ["GET", "POST"])
-@rateLimiter.limit("5 per hour")
+@rateLimiter.limit("10 per hour", methods=["POST"])
 def reset_password():
     #Send user back to forgot password if session expired or they try to access the page without going through the forgot password process
     if "reset_user_id" not in session or datetime.now().timestamp() > session.get("resetExpiry",0):
