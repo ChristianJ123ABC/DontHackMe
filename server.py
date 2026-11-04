@@ -298,7 +298,7 @@ def generatePassword(length, upperChar, lowerChar, digits, symbols):
 # - - - - - - - - - - 
 
 # - - - - - - - - - - 
-#  USER AUTHENTICATION (ORDER: Password Generator, Register, 2FA Verification, Login, 2FA Login, 2FA Recovery Codes, Logout)
+#  USER AUTHENTICATION (ORDER: Password Generator, Register, 2FA Verification, Login, 2FA Login, 2FA Recovery Codes, Forgot + Reset Password, Logout)
 # - - - - - - - - - -
 
 @app.route("/password_generator")
@@ -485,6 +485,15 @@ def login_2fa():
             session["email"] = user["email"]
             session["username"] = user["username"]
             session.permanent = True
+
+            cursor = mysql.connection.cursor()
+            cursor.execute("SELECT password_reset_at FROM users WHERE id = %s", (user["id"],))
+            row = cursor.fetchone()
+            cursor.close()
+
+            if row and row["password_reset_at"]:
+                flash("Your password was last reset on " + row["password_reset_at"].strftime("%Y-%m-%d %H:%M:%S") + ". If this was not you, please reset your password immediately.", "warning")
+
             return redirect(url_for("dashboard"))
 
         flash("Invalid code", "danger")
@@ -546,6 +555,100 @@ def regenerateCodes():
     cursor.close()
 
     return render_template("recovery_codes.html", codes=codes)
+
+
+@app.route("/forgot-password", methods = ["GET", "POST"])
+@rateLimiter.limit("5 per hour")
+def forgot_password():
+    if request.method == "POST":
+        details = request.form["details"].strip().lower()
+        totpCode = request.form["totpCode"].strip()
+        recoveryCode = request.form["recoveryCode"].strip()
+        normalisation = recoveryCode.replace("-", "").replace(" ", "").upper() #Accepts code formats: XXXX-XXXX, xxxx-xxxx, XXXX XXXX and xxxx xxxx
+
+        if len(details) > 255 or len(totpCode) > 6 or len(normalisation) > 8:
+            flash("Invalid input", "danger")
+            return render_template("forgot_password.html")
+
+        correctCode = normalisation[:4] + "-" + normalisation[4:]
+        cursor = mysql.connection.cursor()
+
+        #Used to differentiate if the user chose their email or username to identify themselves
+        if "@" in details:
+            cursor.execute("SELECT id, twofa_secret FROM users WHERE email = %s", (details,))
+        else:
+            cursor.execute("SELECT id, twofa_secret FROM users WHERE username = %s", (details,))
+        user = cursor.fetchone()
+        cursor.close()
+
+    
+        if user:
+            totpVerify = pyotp.TOTP(decrypt2fa(user["twofa_secret"])).verify(totpCode, valid_window=1) #Allows for a 30 second window before and after the current time to account for clock drift
+            cursor = mysql.connection.cursor()
+            cursor.execute("SELECT id,code_hash FROM recovery_codes WHERE user_id = %s", (user["id"],))
+            rows = cursor.fetchall()
+            cursor.close()
+
+            recoveryVerify = any(check_password_hash(row["code_hash"], correctCode) for row in rows)
+
+            #Allows user to reset password if TOTP and recovery code are valid
+            #Provide temporary details to identify the user and allow them to reset their password, but not allow access to the dashboard.
+            if totpVerify and recoveryVerify:
+                session.clear()
+                session["reset_user_id"] = user["id"]
+                session["resetExpiry"] = (datetime.now()+timedelta(minutes=5)).timestamp() 
+                return redirect(url_for("reset_password"))
+            
+        flash("TOTP or recovery code is invalid", "danger")
+
+    return render_template("forgot_password.html")
+
+@app.route("/reset-password", methods = ["GET", "POST"])
+@rateLimiter.limit("5 per hour")
+def reset_password():
+    #Send user back to forgot password if session expired or they try to access the page without going through the forgot password process
+    if "reset_user_id" not in session or datetime.now().timestamp() > session.get("resetExpiry",0):
+        session.clear()
+        return redirect(url_for("forgot_password"))
+
+    if request.method == "POST":
+        password = request.form["password"].strip()
+        confirmPassword = request.form["confirmPassword"].strip()
+        cursor = mysql.connection.cursor()
+        cursor.execute("SELECT email,hashed_password,id,twofa_confirmed,twofa_secret from users WHERE id = %s", (session["reset_user_id"],))
+        user = cursor.fetchone()
+        cursor.close()
+        print(user)
+        if password != confirmPassword:
+            flash("Passwords do not match", "danger")
+            return render_template("reset_password.html")
+
+        if failPasswordPolicy(password) == "breach":
+            flash("Password is commonly breached, try again", "danger")
+            return render_template("reset_password.html")
+        
+        if failPasswordPolicy(password) == False:
+            flash("Error, try again", "danger")
+            return render_template("reset_password.html")
+
+        if check_password_hash(user["hashed_password"], password):
+            flash("New password cannot be the same as the old password", "danger")
+            return render_template("reset_password.html")
+            
+
+        else:
+
+            cursor = mysql.connection.cursor()
+            cursor.execute("UPDATE users SET hashed_password = %s, password_reset_at = NOW() WHERE id = %s", (generate_password_hash(password), session["reset_user_id"]))
+            mysql.connection.commit()
+            cursor.close()
+            session.clear()
+            flash("Password reset successfully", "success")
+            return redirect(url_for("login"))
+
+    return render_template("reset_password.html")
+
+        
 
 @app.route('/logout')
 def logout():

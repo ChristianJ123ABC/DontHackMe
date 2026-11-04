@@ -5,8 +5,11 @@
     #Flask templates: https://flask.palletsprojects.com/en/stable/tutorial/templates/
     #https://www.geeksforgeeks.org/python/placeholders-in-jinja2-template-python/
 -->
-    
 
+<!-- STYLING:
+     https://stackoverflow.com/questions/32039846/can-i-use-css-to-add-a-bullet-point-to-any-element
+ -->
+    
 <!DOCTYPE html>
 <html>
 <head>
@@ -20,6 +23,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-B/GM4XqrwHnWXNOWMbloTmrYXZg10cakYGmpfsR/bbzQ6JAJI4ihuyADKLnBgrCe" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
+<link rel="icon" href="{{ url_for('static', filename='uploads/logo.png') }}">
 <body id = "{% block body_id%}{% endblock %}">
     {% include "navpartial.html" %}
     {% include "flashpartial.html" %}
