@@ -174,7 +174,7 @@ def usernameExists(username):
     return user
 
 #FOLLOWS NIST SP800-63B-4 (Minimum 15 characters, maximum 128 characters, no commonly breached passwords, no forced complexity)
-def failPasswordPolicy(password):
+def isPasswordValid(password):
     if len(password) < 15 or len(password) > 128:
             return False
 
@@ -182,7 +182,7 @@ def failPasswordPolicy(password):
     with open("data/passwords.txt", encoding="utf-8", errors="ignore") as textFile:
         for line in textFile:
             if line.strip().lower() == password.lower():
-                return "breach"
+                return "breached"
 
     return True
 
@@ -353,11 +353,11 @@ def register():
     email = request.form["email"].strip().lower()
     hashPass = generate_password_hash(password)
 
-    if failPasswordPolicy(password) == "breach":
+    if isPasswordValid(password) == "breached":
         flash("Password is commonly breached, try again", "danger")
         return render_template("register.html", email=email, username=username)
 
-    if usernameExists(username) or not validEmail(email) or emailExists(email) or failPasswordPolicy(password) == False or len(username) > 50 or len(username) < 3:
+    if usernameExists(username) or not validEmail(email) or emailExists(email) or isPasswordValid(password) == False or len(username) > 50 or len(username) < 3:
         flash("Error, try again", "danger")
         return render_template("register.html", email=email, username=username)
 
@@ -615,19 +615,18 @@ def reset_password():
         password = request.form["password"].strip()
         confirmPassword = request.form["confirmPassword"].strip()
         cursor = mysql.connection.cursor()
-        cursor.execute("SELECT email,hashed_password,id,twofa_confirmed,twofa_secret from users WHERE id = %s", (session["reset_user_id"],))
+        cursor.execute("SELECT hashed_password from users WHERE id = %s", (session["reset_user_id"],))
         user = cursor.fetchone()
         cursor.close()
-        print(user)
         if password != confirmPassword:
             flash("Passwords do not match", "danger")
             return render_template("reset_password.html")
 
-        if failPasswordPolicy(password) == "breach":
+        if isPasswordValid(password) == "breached":
             flash("Password is commonly breached, try again", "danger")
             return render_template("reset_password.html")
         
-        if failPasswordPolicy(password) == False:
+        if isPasswordValid(password) == False:
             flash("Error, try again", "danger")
             return render_template("reset_password.html")
 
