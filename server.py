@@ -19,6 +19,12 @@
 #Disabling Cache / hiding sensitive data
 #https://stackoverflow.com/questions/34066804/disabling-caching-in-flask
 
+#Rate Limiting
+#https://flask-limiter.readthedocs.io/en/stable/
+#https://flask-limiter.readthedocs.io/en/stable/api.html#flask_limiter.Limiter.params.key_func Suggestions for limits
+
+#Forgot / Reset Password
+#https://medium.com/@khalidnoori568/how-to-build-a-password-reset-email-system-in-python-step-by-step-guide-2ec4d89eaad3
 
 #Password Generator
 #Joining strings https://stackoverflow.com/questions/3854692/generate-password-in-python
@@ -530,7 +536,7 @@ def recovery():
         cursor.close()
         if row and row["password_reset_at"]:
             flash("Your password was last reset on " + row["password_reset_at"].strftime("%Y-%m-%d %H:%M:%S") + ". If this was not you, please reset your password immediately.", "warning")
-            
+
         flash(f"Recovery code {code} has been used. {remaining} codes remaining.", "success")
         return redirect(url_for("dashboard"))
 
