@@ -319,7 +319,7 @@ def register():
         return render_template("register.html")
 
     username = request.form["username"].strip()
-    password = request.form["password"].strip()
+    password = request.form["password"]
     email = request.form["email"].strip().lower()
     hashPass = generate_password_hash(password)
 
@@ -410,7 +410,7 @@ def login():
     
 
     email = request.form["email"].strip()
-    password = request.form["password"].strip()
+    password = request.form["password"]
 
     cursor = mysql.connection.cursor()
     cursor.execute("SELECT email,hashed_password,id,twofa_confirmed,twofa_secret from users WHERE email = %s", (email,))
@@ -494,9 +494,9 @@ def profile():
     if request.method == "POST":
         username = request.form["username"].strip()
         email = request.form["email"].strip().lower()
-        currentPassword = request.form["currentPassword"].strip()
-        password = request.form["password"].strip()
-        confirmPassword = request.form["confirmPassword"].strip()
+        currentPassword = request.form["currentPassword"]
+        password = request.form["password"]
+        confirmPassword = request.form["confirmPassword"]
 
         if len(username) > 50 or len(username) < 3 or not validEmail(email) or len(email) > 255:
             flash("Invalid username or email", "danger")
@@ -506,13 +506,7 @@ def profile():
             flash("Incorrect current password", "danger")
             return render_template("profile.html", username=user["username"], email=user["email"])
 
-    
-
-        cursor = mysql.connection.cursor()
-        cursor.execute("SELECT id FROM users WHERE (username = %s OR email = %s) AND id = %s", (username, email, session["user_id"]))
-        sameUser = cursor.fetchone()
-
-        if sameUser and not password:
+        if username == user["username"] and email == user["email"] and not password:
             flash("No changes made", "info")
             return render_template("profile.html", username=user["username"], email=user["email"])
 
@@ -554,6 +548,8 @@ def profile():
             cursor.execute("UPDATE users SET username = %s, email = %s WHERE id = %s", (username, email, session["user_id"]))
         mysql.connection.commit()
         cursor.close()
+        session["username"] = username
+        session["email"] = email
 
         flash("Profile updated", "success")
         return redirect(url_for("profile"))
@@ -647,7 +643,7 @@ def regenerateCodes():
     cursor = mysql.connection.cursor()
     cursor.execute("SELECT hashed_password FROM users where id = %s", (session["user_id"],))
     user = cursor.fetchone()
-    password = request.form["password"].strip()
+    password = request.form["password"]
 
     if not user or not check_password_hash(user["hashed_password"], password):
         cursor.close()
@@ -716,8 +712,8 @@ def reset_password():
         return redirect(url_for("forgot_password"))
 
     if request.method == "POST":
-        password = request.form["password"].strip()
-        confirmPassword = request.form["confirmPassword"].strip()
+        password = request.form["password"]
+        confirmPassword = request.form["confirmPassword"]
         cursor = mysql.connection.cursor()
         cursor.execute("SELECT hashed_password from users WHERE id = %s", (session["reset_user_id"],))
         user = cursor.fetchone()
