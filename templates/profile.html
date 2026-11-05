@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+{% block body_id %}profile{% endblock %}
+
+{% block content %}
+    <h1>Profile</h1>
+    <h3>Change only what you need <br> (must leave username and email field filled if editing) </h3>
+    <section>
+        <h2>User Details</h2>
+        <form method="POST" action="{{ url_for('profile') }}" class="form" style="margin: 20px auto; padding: 70px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label for="username">Username</label>
+            <br>
+            <input type="text" id="username" name="username" value="{{ username }}" maxlength="50" required autocomplete="username">
+            <br>
+            <label for="email">Email</label>
+            <br>
+            <input type="email" id="email" name="email" value="{{ email }}" maxlength="255" required autocomplete="email">
+            <br>
+            <label for="password">New password (optional)</label>
+            <input type="password" id="password" name="password" autocomplete="new-password">
+            <br>
+            <label for="confirmPassword">Confirm new password</label>
+            <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password">
+            <br>
+            <label for="currentPassword">Current password (required)</label>
+            <input type="password" id="currentPassword" name="currentPassword" required autocomplete="current-password">
+            <br><br>
+            <button type="submit">Save changes</button> <a href="{{ url_for('dashboard') }}" style="padding: 20px;">Cancel</a></p>
+        </form>
+    </section>  
+
+    <section>
+        <h2 style="text-align: left;">Security</h2>
+        <h3 style="text-align: left;">Recovery Codes</h3>
+        <p>Generate 8 new recovery codes. You will need to save the new codes in a safe place.</p>
+        <form method="POST" action="{{ url_for('regenerateCodes') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <label for="codePassword">Current password (required)</label>
+            <input type="password" id="codePassword" name="password" required autocomplete="current-password">
+
+            <button type="submit">Regenerate Recovery Codes</button><br>
+        </form>
+    </section>
+    <br>
+    <section>
+        <a href="{{ url_for('password_generator') }}" style="font-size: 2rem;">Password Generator</a>
+    </section>
+
+   <!-- #NOTE: ADD DELETE ACCOUNT AND RE-ENROL 2FA -->
+    
+{% endblock %}
+    
+{% block scripts %}
+{% endblock %}
+
+
