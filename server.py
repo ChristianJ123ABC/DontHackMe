@@ -99,7 +99,7 @@ def home():
 
 
 # - - - - - - - - - - 
-# FUNCTIONS FOR VALIDATIONS / FEATURES (NOTE: MOVE TO SEPARATE .py LATER ON)
+# FUNCTIONS FOR FEATURES (ORDER: Generate 2FA Recovery Codes, Use recovery code, Validation + Encryption Functions, Exception Handling Functions, Password / Passphrase Generator) (NOTE: MOVE TO SEPARATE .py LATER ON) 
 # - - - - - - - - - - 
 
 # #
@@ -299,45 +299,8 @@ def generatePassword(length, upperChar, lowerChar, digits, symbols):
 # - - - - - - - - - - 
 
 # - - - - - - - - - - 
-#  USER AUTHENTICATION (ORDER: Password Generator, Register, 2FA Verification, Login, 2FA Login, 2FA Recovery Codes, Forgot + Reset Password, Logout)
+#  USER AUTHENTICATION (ORDER: Register, 2FA Verification, Login, 2FA Login, 2FA Recovery Codes)
 # - - - - - - - - - -
-
-@app.route("/password_generator")
-def password_generator():
-
-    #Used to display a specific generator
-    mode = request.args.get("mode")
-    if mode != "passphrase":
-        mode = "password"
-    return render_template("password_generator.html", mode = mode)
-
-@app.route("/generate", methods=["POST"])
-def generate():
-    mode = request.form["mode"]
-    if mode != "passphrase":
-        mode = "password"
-
-    upperChar = request.form.get("upperChar")
-    lowerChar = request.form.get("lowerChar")
-    digits = request.form.get("digits")
-    symbols = request.form.get("symbols")
-    capitalize = request.form.get("capitalize")
-    number = request.form.get("number")
-
-
-    if mode == "password":
-        length = int(request.form["length"])
-        password = generatePassword(length, upperChar, lowerChar, digits, symbols)
-
-    else:
-        words = int(request.form["words"])
-        password = generatePassphrase(words, capitalize, number)
-
-    #x = x is used to keep persistent checkbox marked via jinja template
-    return render_template("password_generator.html", password=password, mode=mode, upperChar=upperChar, lowerChar=lowerChar, digits=digits, symbols=symbols, capitalize=capitalize, number=number) 
-
-
-
 
 @app.route("/register", methods=["GET", "POST"])
 @rateLimiter.limit("5 per minute; 20 per hour", methods=["POST"])
@@ -500,10 +463,137 @@ def login_2fa():
         flash("Invalid code", "danger")
 
     return render_template("login_2fa.html")
+
+
+
+
+# - - - - - - - - - - 
+#  USER MANAGEMENT (ORDER: Profile, Password/Passphrase generator, Recovery Code, regenerate Recovery Codes, Forgot Password, Reset Password, Logout)
+# - - - - - - - - - -
+@app.route("/profile", methods=["GET", "POST"])
+@rateLimiter.limit("10 per hour", methods=["POST"])
+def profile():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT username,email, hashed_password FROM users WHERE id = %s", (session["user_id"],))
+    user = cursor.fetchone()
+    cursor.close()
+
+    if not user:
+        session.clear()
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        username = request.form["username"].strip()
+        email = request.form["email"].strip().lower()
+        currentPassword = request.form["currentPassword"].strip()
+        password = request.form["password"].strip()
+        confirmPassword = request.form["confirmPassword"].strip()
+
+        if len(username) > 50 or len(username) < 3 or not validEmail(email) or len(email) > 255:
+            flash("Invalid username or email", "danger")
+            return render_template("profile.html", username=user["username"], email=user["email"])
+
+        if not check_password_hash(user["hashed_password"], currentPassword):
+            flash("Incorrect current password", "danger")
+            return render_template("profile.html", username=user["username"], email=user["email"])
+
     
 
+        cursor = mysql.connection.cursor()
+        cursor.execute("SELECT id FROM users WHERE (username = %s OR email = %s) AND id = %s", (username, email, session["user_id"]))
+        sameUser = cursor.fetchone()
+
+        if sameUser and not password:
+            flash("No changes made", "info")
+            return render_template("profile.html", username=user["username"], email=user["email"])
+
+        cursor = mysql.connection.cursor()
+        cursor.execute("SELECT id FROM users WHERE (username = %s OR email = %s) AND id != %s", (username, email, session["user_id"]))
+        existingUser = cursor.fetchone()
+        cursor.close()
+    
+
+        if existingUser:
+            flash("Username or email already exists", "danger")
+            return render_template("profile.html", username=user["username"], email=user["email"])
+
+        
+        #Runs if the user wants to reset password
+        if password:
+            if password != confirmPassword:
+                flash("Passwords do not match", "danger")
+                return render_template("profile.html", username=user["username"], email=user["email"])
+
+            if isPasswordValid(password) == "breached":
+                flash("Password is commonly breached, try again", "danger")
+                return render_template("profile.html", username=user["username"], email=user["email"])
+
+            if isPasswordValid(password) == False:
+                flash("Error, try again", "danger")
+                return render_template("profile.html", username=user["username"], email=user["email"])
+
+            if check_password_hash(user["hashed_password"], password):
+                flash("New password cannot be the same as the old password", "danger")
+                return render_template("profile.html", username=user["username"], email=user["email"])
+
+        cursor = mysql.connection.cursor()
+
+        #Updates username, email and password if the user wants to reset their password. If not, only updates username and email.
+        if password:
+            cursor.execute("UPDATE users SET username = %s, email = %s, hashed_password = %s, password_reset_at = NOW() WHERE id = %s", (username, email, generate_password_hash(password), session["user_id"]))
+        else:
+            cursor.execute("UPDATE users SET username = %s, email = %s WHERE id = %s", (username, email, session["user_id"]))
+        mysql.connection.commit()
+        cursor.close()
+
+        flash("Profile updated", "success")
+        return redirect(url_for("profile"))
+
+    #Allows for username and email to stay in the form fields upon refresh.
+    return render_template("profile.html", username=user["username"], email=user["email"])
+
+      
 
 
+
+
+
+@app.route("/password_generator")
+def password_generator():
+
+    #Used to display a specific generator
+    mode = request.args.get("mode")
+    if mode != "passphrase":
+        mode = "password"
+    return render_template("password_generator.html", mode = mode)
+
+@app.route("/generate", methods=["POST"])
+def generate():
+    mode = request.form["mode"]
+    if mode != "passphrase":
+        mode = "password"
+
+    upperChar = request.form.get("upperChar")
+    lowerChar = request.form.get("lowerChar")
+    digits = request.form.get("digits")
+    symbols = request.form.get("symbols")
+    capitalize = request.form.get("capitalize")
+    number = request.form.get("number")
+
+
+    if mode == "password":
+        length = int(request.form["length"])
+        password = generatePassword(length, upperChar, lowerChar, digits, symbols)
+
+    else:
+        words = int(request.form["words"])
+        password = generatePassphrase(words, capitalize, number)
+
+    #x = x is used to keep persistent checkbox marked via jinja template
+    return render_template("password_generator.html", password=password, mode=mode, upperChar=upperChar, lowerChar=lowerChar, digits=digits, symbols=symbols, capitalize=capitalize, number=number) 
 
 #Alternative way to sign into account IF you lose your authenticator
 @app.route("/recovery", methods = ["GET", "POST"])
@@ -539,9 +629,9 @@ def recovery():
     return render_template("recovery.html")
 
 
-#NOTE: MAKE SECURITY SECTION / SETTINGS THAT HOLDS BOTH THIS AND DELETE ACCOUNT. ASKS FOR PASSWORD FORM TO GENERATE THE NEW CODES
+
 #Regenerates security codes
-@app.route("/regenerateCodes", methods=["POST"])
+@app.route("/profile/regenerateCodes", methods=["POST"])
 @rateLimiter.limit("5 per hour")
 def regenerateCodes():
     if "user_id" not in session:
@@ -551,12 +641,12 @@ def regenerateCodes():
     cursor = mysql.connection.cursor()
     cursor.execute("SELECT hashed_password FROM users where id = %s", (session["user_id"],))
     user = cursor.fetchone()
-    password = request.form["password"]
+    password = request.form["password"].strip()
 
     if not user or not check_password_hash(user["hashed_password"], password):
         cursor.close()
         flash("Incorrect password", "danger")
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("profile"))
 
     codes = generateRecoveryCodes(session["user_id"])
     mysql.connection.commit()
@@ -644,7 +734,6 @@ def reset_password():
             
 
         else:
-
             cursor = mysql.connection.cursor()
             cursor.execute("UPDATE users SET hashed_password = %s, password_reset_at = NOW() WHERE id = %s", (generate_password_hash(password), session["reset_user_id"]))
             mysql.connection.commit()
@@ -654,8 +743,7 @@ def reset_password():
             return redirect(url_for("login"))
 
     return render_template("reset_password.html")
-
-        
+ 
 
 @app.route('/logout')
 def logout():
@@ -672,7 +760,7 @@ def logout():
 
 
 # - - - - - - - - - - 
-#  DASHBOARD, MODULES, TESTS, SCANNER
+#  CORE FUNCTIONALITY: (ORDER: DASHBOARD, MODULES, TESTS, SCANNER)
 # - - - - - - - - - -
 @app.route("/dashboard")
 def dashboard():
