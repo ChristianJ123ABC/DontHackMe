@@ -474,7 +474,7 @@ def login_2fa():
 
 
 # - - - - - - - - - - 
-#  USER MANAGEMENT (ORDER: Profile, Password/Passphrase generator, Recovery Code, regenerate Recovery Codes, Forgot Password, Reset Password, Logout)
+#  USER MANAGEMENT (ORDER: Profile, regenerate Recovery Codes, delete account, Password/Passphrase generator, Recovery Code, Forgot Password, Reset Password, Logout)
 # - - - - - - - - - -
 @app.route("/profile", methods=["GET", "POST"])
 @rateLimiter.limit("10 per hour", methods=["POST"])
@@ -557,7 +557,82 @@ def profile():
     #Allows for username and email to stay in the form fields upon refresh.
     return render_template("profile.html", username=user["username"], email=user["email"])
 
-      
+#Regenerates security codes
+@app.route("/profile/regenerateCodes", methods=["POST"])
+@rateLimiter.limit("5 per hour")
+def regenerateCodes():
+    if "user_id" not in session:
+        flash("You need to be logged in.", "danger")
+        return redirect(url_for("login"))
+
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT hashed_password FROM users where id = %s", (session["user_id"],))
+    user = cursor.fetchone()
+    password = request.form["password"]
+
+    if not user or not check_password_hash(user["hashed_password"], password):
+        cursor.close()
+        flash("Incorrect password", "danger")
+        return redirect(url_for("profile"))
+
+    codes = generateRecoveryCodes(session["user_id"])
+    mysql.connection.commit()
+    cursor.close()
+
+    return render_template("recovery_codes.html", codes=codes)
+
+#Checks all of the user's identifiable information before deleting their account permanently
+@app.route("/profile/deleteAccount", methods=["POST"])
+@rateLimiter.limit("5 per hour")
+def delete_account():
+    if "user_id" not in session:
+        flash("You need to be logged in.", "danger")
+        return redirect(url_for("login"))
+
+    
+    password = request.form["password"]
+    email = request.form["email"].strip().lower()
+    totpCode = request.form["totpCode"].strip()
+    recoveryCode = request.form["recoveryCode"].strip()
+    confirmText = request.form["confirmText"].strip()
+    understand = request.form["understand"]
+    normalisation = recoveryCode.replace("-", "").replace(" ", "").upper() #Accepts code formats: XXXX-XXXX, xxxx-xxxx, XXXX XXXX and xxxx xxxx
+
+    if len(password) > 128 or len(email) > 255 or len(totpCode) > 6 or len(normalisation) > 8:
+        flash("Invalid input", "danger")
+        return redirect(url_for("profile"))
+
+    correctRecoveryCode = normalisation[:4] + "-" + normalisation[4:]
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT id, email, hashed_password, twofa_secret FROM users WHERE id = %s", (session["user_id"],))
+    user = cursor.fetchone()
+
+    if not user:
+        cursor.close()
+        session.clear()
+        return redirect(url_for("login"))
+
+    cursor.execute("SELECT code_hash FROM recovery_codes WHERE user_id = %s", (session["user_id"],))
+    rows = cursor.fetchall()
+
+    #Checks used to verify the user's information
+    verifyPassword = check_password_hash(user["hashed_password"], password)
+    verifyEmail = user["email"] == email
+    verifyTOTP = pyotp.TOTP(decrypt2fa(user["twofa_secret"])).verify(totpCode, valid_window=1) #Allows for a 30 second window before and after the current time to account for clock drift
+    verifyRecoveryCode = any(check_password_hash(row["code_hash"], correctRecoveryCode) for row in rows)
+
+    if not (verifyPassword and verifyEmail and verifyTOTP and verifyRecoveryCode and confirmText == "DELETE" and understand == "confirmed"):
+        cursor.close()
+        print("password:", verifyPassword, "| email:", verifyEmail, "| totp:", verifyTOTP, "| recovery:", verifyRecoveryCode, "| confirmText:", confirmText == "DELETE", "| understand:", understand == "confirmed", flush=True)
+        flash("Not all fields were valid. Please try again to delete the account.", "danger")
+        return redirect(url_for("profile"))
+
+    cursor.execute("DELETE FROM users WHERE id = %s", (session["user_id"],))
+    mysql.connection.commit()
+    cursor.close()
+    session.clear()
+    flash("Account deleted successfully", "success")
+    return redirect(url_for("home"))
 
 
 
@@ -629,32 +704,6 @@ def recovery():
     
     flash("Invalid recovery code", "danger")
     return render_template("recovery.html")
-
-
-
-#Regenerates security codes
-@app.route("/profile/regenerateCodes", methods=["POST"])
-@rateLimiter.limit("5 per hour")
-def regenerateCodes():
-    if "user_id" not in session:
-        flash("You need to be logged in.", "danger")
-        return redirect(url_for("login"))
-
-    cursor = mysql.connection.cursor()
-    cursor.execute("SELECT hashed_password FROM users where id = %s", (session["user_id"],))
-    user = cursor.fetchone()
-    password = request.form["password"]
-
-    if not user or not check_password_hash(user["hashed_password"], password):
-        cursor.close()
-        flash("Incorrect password", "danger")
-        return redirect(url_for("profile"))
-
-    codes = generateRecoveryCodes(session["user_id"])
-    mysql.connection.commit()
-    cursor.close()
-
-    return render_template("recovery_codes.html", codes=codes)
 
 
 @app.route("/forgot-password", methods = ["GET", "POST"])

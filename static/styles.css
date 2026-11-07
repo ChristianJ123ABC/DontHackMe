@@ -133,3 +133,11 @@ html {
     opacity: 1;
 }
 
+
+#confirmDelete:enabled{
+    color: red;
+}
+
+#proceed{  
+    color: red;
+}
