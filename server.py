@@ -595,7 +595,7 @@ def delete_account():
     totpCode = request.form["totpCode"].strip()
     recoveryCode = request.form["recoveryCode"].strip()
     confirmText = request.form["confirmText"].strip()
-    understand = request.form["understand"]
+    understand = request.form.get("understand")
     normalisation = recoveryCode.replace("-", "").replace(" ", "").upper() #Accepts code formats: XXXX-XXXX, xxxx-xxxx, XXXX XXXX and xxxx xxxx
 
     if len(password) > 128 or len(email) > 255 or len(totpCode) > 6 or len(normalisation) > 8:
@@ -623,7 +623,6 @@ def delete_account():
 
     if not (verifyPassword and verifyEmail and verifyTOTP and verifyRecoveryCode and confirmText == "DELETE" and understand == "confirmed"):
         cursor.close()
-        print("password:", verifyPassword, "| email:", verifyEmail, "| totp:", verifyTOTP, "| recovery:", verifyRecoveryCode, "| confirmText:", confirmText == "DELETE", "| understand:", understand == "confirmed", flush=True)
         flash("Not all fields were valid. Please try again to delete the account.", "danger")
         return redirect(url_for("profile"))
 
