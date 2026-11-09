@@ -15,6 +15,26 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
+-- Table structure for table `admin_audit`
+--
+
+DROP TABLE IF EXISTS `admin_audit`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `admin_audit` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `admin_id` int DEFAULT NULL,
+  `action` varchar(30) NOT NULL,
+  `target_user_id` int NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `admin_id` (`admin_id`),
+  CONSTRAINT `admin_audit_ibfk_1` FOREIGN KEY (`admin_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `admin_audit_chk_action` CHECK ((`action` = _utf8mb4'delete_user'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `attempts`
 --
 
@@ -38,15 +58,6 @@ CREATE TABLE `attempts` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `attempts`
---
-
-LOCK TABLES `attempts` WRITE;
-/*!40000 ALTER TABLE `attempts` DISABLE KEYS */;
-/*!40000 ALTER TABLE `attempts` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `modules`
 --
 
@@ -64,15 +75,6 @@ CREATE TABLE `modules` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `modules`
---
-
-LOCK TABLES `modules` WRITE;
-/*!40000 ALTER TABLE `modules` DISABLE KEYS */;
-/*!40000 ALTER TABLE `modules` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `recovery_codes`
 --
 
@@ -87,17 +89,8 @@ CREATE TABLE `recovery_codes` (
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `recovery_codes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=57 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `recovery_codes`
---
-
-LOCK TABLES `recovery_codes` WRITE;
-/*!40000 ALTER TABLE `recovery_codes` DISABLE KEYS */;
-/*!40000 ALTER TABLE `recovery_codes` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `url_scans`
@@ -123,15 +116,6 @@ CREATE TABLE `url_scans` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `url_scans`
---
-
-LOCK TABLES `url_scans` WRITE;
-/*!40000 ALTER TABLE `url_scans` DISABLE KEYS */;
-/*!40000 ALTER TABLE `url_scans` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `users`
 --
 
@@ -146,20 +130,12 @@ CREATE TABLE `users` (
   `twofa_confirmed` tinyint(1) NOT NULL DEFAULT '0',
   `twofa_secret` varchar(255) NOT NULL,
   `password_reset_at` datetime DEFAULT NULL,
+  `role` enum('user','admin') NOT NULL DEFAULT 'user',
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
   UNIQUE KEY `username` (`username`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `users`
---
-
-LOCK TABLES `users` WRITE;
-/*!40000 ALTER TABLE `users` DISABLE KEYS */;
-/*!40000 ALTER TABLE `users` ENABLE KEYS */;
-UNLOCK TABLES;
 SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -171,4 +147,4 @@ SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-03 17:35:55
+-- Dump completed on 2026-11-09 19:54:58

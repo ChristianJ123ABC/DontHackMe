@@ -198,6 +198,9 @@ def isPasswordValid(password):
 # EXCEPTION HANDLING FUNCTIONS 
 # # 
 
+#NOTE: ADD IN CODE 403 FOR ROLE NOT PERMITTED WHEN DOING RBAC
+#NOTE 2: MAKE DELETE ACCOUNT CHECK FOR USER ROLE IF THEY ARE ADMIN
+
 #Exceeding rate limit: 429 Too Many Requests
 @app.errorhandler(werkzeug.exceptions.TooManyRequests)
 def handle_rate_limit(e):
