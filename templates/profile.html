@@ -1,15 +1,3 @@
-<!-- SOURCES -->
-<!-- DELETE ACCOUNT 
-    #Popup help (<dialog>)
-    #https://www.w3schools.com/jsref/met_dialog_showmodal.asp
-    #https://developer.mozilla.org/en-US/play?uuid=2d5ffb49648aeda7dcd8b20ae93ca41dbcc45e6e&state=pVVti%2BM2EP4rg7pQ50jtuw%2Bl4HUCt9srLbQc3B7tF0FXsSaJurLkynKyIeS%2Fl5Hki3eTywWaD7E97%2FM8o9GerX2jWckqqYS2K1Byxll852zODUC16L23JmpqbTvkDPyuxRlnUcXZ%2FJ7kVRG%2Fo9vSugYa9Gs7DhnDkC6FB6ja9AJQabFADUvryEhsfhBGNUJzNv9FbKxTHiFKyqoIpkfPDjXWPoUfeYIRDZW6FJv3g8jhv71yKL94A1S29cqaeVWkl1PVnVMGoVs71bQXzD6hhFYYKS7YPLRKooPGmifcndhVRWxmwKcYAKqk2hytxrx0%2FaJR%2FkjM8D2%2Ft2apXPOCGgo5RKoK4mLODYmIojk33LyIbVskij%2B2aCDajKJVrcNoFiemKlqHc27YlNVdx0r2HU3VnlKtUa3WvoR3P71tn29JYjfoltpuS%2BhqZ7UOwlZIqcyqhLf5jw6bIFtYJ9GV8K59hs5qJWGhRf10y80hpPqHMtXWdB60XX3Q2KDxMANp655e8xX6JL3b%2FSazVO3klptlb2pCnxwzj89%2BEqs9xsmVMeg%2B4zNFfLzZn9Mcbvbke%2BDcPIaKR0axt8%2B2hdmp%2BNcASmwkNpAO4qXih8NE9Ucn4ugucnbJMVJJbtwUBQRKE9Wk6kBAY6XQqQhujnFzIeWHDRr%2Fu%2Bo8GnQZbQNVP3E2hWwCs%2FkX3LLH6F5Ct7bbPyhgNnmkrJAC5yMF9U5%2FRQFhiwwFhVXTgV%2FjAMnCPg%2F9BuUVDad9FYA6ulzbSyrWoe%2Bd%2BVPoHmEGnHF2C0UBn7BDD1EJG9Ke9B9yvu49CYOoKOC99uiM8GqDejeFLUJtey2h74bGc9pX2PkAT0b5J7ewVX4NwgA2rd%2B9qCIfARpP%2FytIh1W%2FJHDp%2BBLvceUoa%2FIB47DAL4Ebt%2FhxCGOIa07feEGHQ2hdc46UYY2dThh5lBD1Cd6igAf0YWDGcIC3QRarQwlx2x4ZO8vyi17yYDsk%2BQtBWvO9B4MoKXqAdTyohGoyjhV6ZVbBIGAaqDu9GbdKa5BUrPAgem8b4VUttN7lKdjJAAWek%2FTsTIfpn0KGpHkFYdD%2BHTQlZKcolMDZzf5UfuAsTvS3sgtTo%2F56%2BqD%2BP%2FmvO6CJ528U6%2B1qpb%2BOVVRDKtbg9sELjyXc7IMoHySHa4BZ4NI6vJyRh3v6cWw6ZLdavso%2BSA7Ti6VNKWhc%2FmGc7oXWMWjeuvD8GZei1z6b0FgnGYhhrOkyUGYVvN%2FEAtUSsm5N%2B%2Bo%2B0JlN0vUZf%2BeDB%2BoADvR4UyS42JT5NTbISiaFe2KH%2FwA%3D&srcPrefix=%2Fen-US%2Fdocs%2FWeb%2FAPI%2FHTMLDialogElement%2F
-    #Close form: https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement/reset
-    #Forcing uppercase for delete confirm text: https://stackoverflow.com/questions/11100041/why-isnt-text-transform-uppercase-working-to-set-my-input-text-to-uppercase
-
-    #Enabling the delete button only when the user types "DELETE" in the input field:
-    #https://flaviocopes.com/how-to-disable-button-javascript/
-    #Re-checks so the delete button reacts to the any changes: https://developer.mozilla.org/en-US/docs/Web/API/Element/input_event
--->
 {% extends "base.html" %}
 {% block title %}Profile{% endblock %}
 {% block body_id %}profile{% endblock %}
@@ -42,128 +30,135 @@
         </form>
     </section>  
 
+
+    <!-- REGENERATE RECOVERY CODES -->
     <section>
         <h2 style="text-align: left;">Security</h2>
         <h3 style="text-align: left;">Recovery Codes</h3>
         <p>Generate 8 new recovery codes. You will need to save the new codes in a safe place.</p>
-        <form method="POST" action="{{ url_for('regenerateCodes') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type = "button" data-open-dialog="regenDialog">Regenerate recovery codes</button>
 
-            <label for="codePassword">Current password (required)</label>
-            <input type="password" id="codePassword" name="password" required autocomplete="current-password">
+        <dialog id = "regenDialog">
+            <form method="POST" action="{{ url_for('regenerateCodes') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <h2>Regenerate recovery codes</h2>
+                <p>Your old codes will be replaced and stop working</p>
 
-            <button type="submit">Regenerate Recovery Codes</button><br>
-        </form>
+                <label for="codePassword">Current password (required)</label>
+                <input type="password" id="codePassword" name="password" required autocomplete="current-password">
+                <br><br>
+                <button type="button" data-close-dialog="regenDialog">Cancel</button>
+                <button type="submit">Regenerate Recovery Codes</button><br>
+            </form>
+        </dialog>
+
+
+
+
+     <!-- PASSWORD / PASSPHRASE GENERATOR-->
     </section>
-    <br>
+    <br><br>
     <section>
-        <a href="{{ url_for('password_generator') }}" style="font-size: 2rem;">Password Generator</a>
+        <h3 style="text-align: left;">Password / Passphrase Generator</h3>
+        <p>Generate a secure password / passphrase that uses OWASP NIST SP800-63B-4 policy, to ensure a secure password.</p>
+        <form action="{{ url_for('password_generator') }}" id="form" style="font-size: 1rem;">
+            <input type="submit" value="Link to generator"/>
+        </form>
     </section>
     <br><br>
 
 
-   <!-- #NOTE: ADD RE-ENROL 2FA BELOW DELETE ACCOUNT -->
+    <!-- DELETE ACCOUNT -->
     <section>
         <h3 style="text-align: left;">Delete account</h3>
         <p>Permanently deletes your account, scores and recovery codes. This cannot be undone.</p>
         <button type="button" id="openDeleteForm">Delete account</button>
     </section>
 
-    <!-- Dialog for confirming account deletion -->
-    <dialog id = unsureDialog>
-        <h2>Are you sure you want to proceed? This process is not reversible.</h2>
-        <button type ="button" id="proceed">Proceed with deletion</button>
-    </dialog>
+    <section>
+        <!-- Dialog for confirming account deletion -->
+        <dialog id = unsureDialog>
+            <h2>Are you sure you want to proceed? This process is not reversible.</h2>
+            <button type ="button" id="proceed">Proceed with deletion</button>
+        </dialog>
 
-    <dialog id = deleteDialog>
-        <form method="POST" action="{{ url_for('delete_account') }}" id="deleteForm" class="form" style="margin: 20px auto; padding: 70px;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <h2>DELETE ACCOUNT</h2>
-            <p>WARNING: THIS IS NOT REVERSIBLE</p>
-            <p>This will permanently delete your account, removing all attempt history, recovery codes, and URL scan history.</p>
+      
+        <dialog id = deleteDialog>
+            <form method="POST" action="{{ url_for('delete_account') }}" id="deleteForm" class="form" style="margin: 20px auto; padding: 70px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <h2>DELETE ACCOUNT</h2>
+                <p>WARNING: THIS IS NOT REVERSIBLE</p>
+                <p>This will permanently delete your account, removing all attempt history, recovery codes, and URL scan history.</p>
 
-            <label for="deleteEmail">Email</label>
-            <br>
-            <input type="email" id="deleteEmail" name="email" maxlength="255" required>
-            <br>
-            <br>
-            <label for="deletePassword">Current password</label>
-            <input type="password" id="deletePassword" name="password" maxlength="128" required>
-            <br>
-            <br>
-            <label for="deleteRecoveryCode">Recovery code</label>
-            <input type="text" id="deleteRecoveryCode" name="recoveryCode" maxlength="9" placeholder="e.g. S2LN-D52M" required>
-            <br>
-            <br>
-            <label for="deleteTOTP">Two-factor authentication code</label>
-            <input type="text" id="deleteTOTP" name="totpCode" required maxlength="6">
-            <br>
-            <br>
-            <label for="confirmText">Type DELETE to confirm</label>
-            <input type="text" id="confirmText" oninput="this.value = this.value.toUpperCase()" maxlength="6" name="confirmText" placeholder="DELETE" required>
-            <br>
-            <label for="understand">
-                <input type="checkbox" id="understand" name="understand" value="confirmed" required>
-                I understand that I am deleting my account permanently
-            </label>
-            <br><br>
-            <button type ="button" id="closeDeleteForm">Cancel</button>
+                <label for="deleteEmail">Email</label>
+                <br>
+                <input type="email" id="deleteEmail" name="email" maxlength="255" required>
+                <br>
+                <br>
+                <label for="deletePassword">Current password</label>
+                <input type="password" id="deletePassword" name="password" maxlength="128" required>
+                <br>
+                <br>
+                <label for="deleteRecoveryCode">Recovery code</label>
+                <input type="text" id="deleteRecoveryCode" name="recoveryCode" maxlength="9" placeholder="e.g. S2LN-D52M" required>
+                <br>
+                <br>
+                <label for="deleteTOTP">Two-factor authentication code</label>
+                <input type="text" id="deleteTOTP" name="totpCode" required maxlength="6">
+                <br>
+                <br>
+                <label for="confirmText">Type DELETE to confirm</label>
+                <input type="text" id="confirmText" oninput="this.value = this.value.toUpperCase()" maxlength="6" name="confirmText" placeholder="DELETE" required>
+                <br>
+                <label for="understand">
+                    <input type="checkbox" id="understand" name="understand" value="confirmed" required>
+                    I understand that I am deleting my account permanently
+                </label>
+                <br><br>
+                <button type ="button" id="closeDeleteForm">Cancel</button>
 
-            <button type="submit" id="confirmDelete" disabled>Delete account</button>
-        </form>
-    </dialog>
+                <button type="submit" id="confirmDelete" disabled>Delete account</button>
+                
+            </form>
+        </dialog>
+    </section>
+
+
+
+
+     <!-- RE-ACTIVATE 2FA -->
+    <section>
+        <br><br>
+        <h3 style="text-align: left;">Re-activate two-factor authentication</h3>
+        <p>Move your authenticator to a new device. Your old authenticator keeps working until you confirm the new one.</p>
+        <button type="button" data-open-dialog="reactivateDialog">Re-enrol 2FA</button>
+
+        <dialog id="reactivateDialog">
+            <form method="POST" action="{{ url_for('reactivate2fa') }}" class="form" style="margin: 20px auto; padding: 70px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <h2>Re-activate 2FA</h2>
+                <p>Enter your password and either a current authenticator code or a recovery code.</p>
+
+                <label for="reactivatePassword">Current password (required)</label>
+                <input type="password" id="reactivatePassword" name="password" maxlength="128" required autocomplete="current-password">
+                <br>
+                <label for="reactivateTOTP">Authenticator code</label>
+                <input type="text" id="reactivateTOTP" name="totpCode" maxlength="6" autocomplete="one-time-code">
+                <br>
+                <label for="reactivateRecovery">Or a valid recovery code</label>
+                <input type="text" id="reactivateRecovery" name="recoveryCode" maxlength="9" placeholder="e.g. S2LN-D52M">
+                <br><br>
+                <button type="button" data-close-dialog="reactivateDialog">Cancel</button>
+                <button type="submit">Re-activate 2FA</button>
+            </form>
+        </dialog>
+    </section>
     
 {% endblock %}
     
 {% block scripts %}
-    <!-- Script to make a popup for the delete account form and for enabling the delete button-->
-    <script>
-        const openDeleteForm = document.getElementById("openDeleteForm");
-        const closeDeleteForm = document.getElementById("closeDeleteForm");
-        const unsureDialog = document.getElementById("unsureDialog");
-
-        const deleteDialog = document.getElementById("deleteDialog");
-        const deleteForm = document.getElementById("deleteForm");
-
-        const confirmTextInput = document.getElementById("confirmText");
-        const confirmDelete = document.getElementById("confirmDelete");
-        const understand = document.getElementById("understand");
-        
-
-        openDeleteForm.addEventListener("click", function () {
-            unsureDialog.showModal();
-        });
-
-        unsureDialog.querySelector("#proceed").addEventListener("click", function () { //Query selector is used for the button only. addEventListener makes it so they can click the entire page and proceed
-            unsureDialog.close();
-            deleteDialog.showModal();
-        });
-       
-        closeDeleteForm.addEventListener("click", () => {
-            deleteDialog.close();
-        });
-
-        //Enable the delete button only when the user types "DELETE" in the input field and checks the checkbox
-        const updateDeleteButton = () => {
-            if (confirmTextInput.value === "DELETE" && understand.checked) {
-                confirmDelete.disabled = false;
-            } else {
-                confirmDelete.disabled = true;
-            }
-        };
-
-        //Re-checks so the delete button reacts to the any changes
-        confirmTextInput.addEventListener("input", updateDeleteButton);
-        understand.addEventListener("change", updateDeleteButton);
-
-        //Wipes form data and disables the delete button when the dialog is closed
-        deleteDialog.addEventListener("close", function () {
-            deleteForm.reset();
-            confirmDelete.disabled = true;
-        });
-
-        
-    </script>
+    <!-- Script for popups for regenerate codes, re-activate 2FA and delete account -->
+    <script src="{{ url_for('static', filename='profile.js') }}"></script>  
 {% endblock %}
 
 

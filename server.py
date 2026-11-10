@@ -477,7 +477,7 @@ def login_2fa():
 
 
 # - - - - - - - - - - 
-#  USER MANAGEMENT (ORDER: Profile, regenerate Recovery Codes, delete account, Password/Passphrase generator, Recovery Code, Forgot Password, Reset Password, Logout)
+#  USER MANAGEMENT (ORDER: Profile, regenerate Recovery Codes, delete account, reactivate 2fa verify+confirm, Password/Passphrase generator, Recovery Code, Forgot Password, Reset Password, Logout)
 # - - - - - - - - - -
 @app.route("/profile", methods=["GET", "POST"])
 @rateLimiter.limit("10 per hour", methods=["POST"])
@@ -562,7 +562,7 @@ def profile():
 
 #Regenerates security codes
 @app.route("/profile/regenerateCodes", methods=["POST"])
-@rateLimiter.limit("5 per hour")
+@rateLimiter.limit("10 per hour")
 def regenerateCodes():
     if "user_id" not in session:
         flash("You need to be logged in.", "danger")
@@ -586,7 +586,7 @@ def regenerateCodes():
 
 #Checks all of the user's identifiable information before deleting their account permanently
 @app.route("/profile/deleteAccount", methods=["POST"])
-@rateLimiter.limit("5 per hour")
+@rateLimiter.limit("10 per hour")
 def delete_account():
     if "user_id" not in session:
         flash("You need to be logged in.", "danger")
@@ -637,7 +637,102 @@ def delete_account():
     return redirect(url_for("home"))
 
 
+#Re-check the user before allowing them to reactivate 2FA
+@app.route("/profile/reactivate2fa", methods=["GET", "POST"])
+@rateLimiter.limit("10 per hour", methods=["POST"])
+def reactivate2fa():
+    if "user_id" not in session:
+        flash("You need to be logged in.", "danger")
+        return redirect(url_for("login"))
 
+    if request.method == "POST":
+        password = request.form["password"]
+        totpCode = request.form["totpCode"].strip()
+        recoveryCode = request.form["recoveryCode"].strip()
+        normalisation = recoveryCode.replace("-", "").replace(" ", "").upper() #Accepts code formats: XXXX-XXXX, xxxx-xxxx, XXXX XXXX and xxxx xxxx
+
+        if len(password) > 128 or len(totpCode) > 6 or len(normalisation) > 8:
+            flash("Invalid input", "danger")
+            return redirect(url_for("reactivate2fa"))
+
+        cursor = mysql.connection.cursor()
+        cursor.execute("SELECT id, hashed_password, twofa_secret FROM users WHERE id = %s", (session["user_id"],))
+        user = cursor.fetchone()
+
+        if not user:
+            cursor.close()
+            session.clear()
+            return redirect(url_for("login"))
+
+        verifyPassword = check_password_hash(user["hashed_password"], password)
+        verifyTOTP = pyotp.TOTP(decrypt2fa(user["twofa_secret"])).verify(totpCode, valid_window=1) #Allows for a 30 second window before and after the current time to account for clock drift
+        verifyRecoveryCode = False
+        if normalisation:
+            correctRecoveryCode = normalisation[:4] + "-" + normalisation[4:]
+            cursor.execute("SELECT code_hash FROM recovery_codes WHERE user_id = %s", (session["user_id"],))
+            rows = cursor.fetchall()
+            verifyRecoveryCode = any(check_password_hash(row["code_hash"], correctRecoveryCode) for row in rows)
+
+        cursor.close()
+
+        #Gives the user the choice of using a TOTP code OR a recovery code 
+        if not (verifyPassword and (verifyTOTP or verifyRecoveryCode)):
+            flash("Not all fields were valid. Please try again to reactivate 2FA.", "danger")
+            return redirect(url_for("reactivate2fa"))
+
+        #Temporary details to identify the user and allow them to reactivate 2FA
+        session["temp2FASecret"] = encrypt2fa(pyotp.random_base32())
+        session["temp2FAExpiry"] = (datetime.now()+timedelta(minutes=15)).timestamp() #Gives the user 15 minutes to reactivate 2FA before expiring the session.
+        return redirect(url_for("reactivate2fa_confirm"))
+
+#Show the new QR code and replace the old secret once  the user proves their identity on the new device
+@app.route("/profile/reactivate2fa/confirm", methods=["GET","POST"])
+@rateLimiter.limit("10 per hour")
+def reactivate2fa_confirm():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+
+    if "temp2FASecret" not in session or datetime.now().timestamp() > session.get("temp2FAExpiry",0):
+        session.clear()
+        flash("Re-activation expired. Current authenticator still works.", "warning")
+        return redirect(url_for("profile"))
+
+    secret = decrypt2fa(session["temp2FASecret"])
+
+    if request.method == "POST":
+        code = request.form["code"].strip()
+
+
+        if len(code) == 6 and pyotp.TOTP(secret).verify(code, valid_window=1):
+            cursor = mysql.connection.cursor()
+            cursor.execute("UPDATE users SET twofa_secret = %s WHERE id = %s", (session["temp2FASecret"], session["user_id"])) #Secret is still encrypted
+            mysql.connection.commit()
+            cursor.close()
+            session.clear()
+            flash("Authenticator secret updated. Your old authenticator will no longer work, so remove it from your old device (if you still have it)", "success")
+            return redirect(url_for("profile"))
+
+        flash("Invalid code. Try again", "danger")
+
+
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT email FROM users WHERE id = %s", (session["user_id"],))
+    user = cursor.fetchone()
+    cursor.close()
+
+    if not user:
+        session.clear()
+        return redirect(url_for("login"))
+
+    uri = pyotp.totp.TOTP(secret).provisioning_uri(name=user["email"], issuer_name="DontHackMe")
+    img = qrcode.make(uri)
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    qr_b64 = base64.b64encode(buf.getvalue()).decode()
+
+    return render_template("reactivate_2fa.html", qr_code=qr_b64, secret=secret)
+    
 
 
 @app.route("/password_generator")

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Re-activate 2FA{% endblock %}
+{% block body_id %}2faReactivate{% endblock %}
+
+{% block content %}
+    <h2>Step 1: Download and open an authenticator app such as Google Authenticator from the App Store / Play Store and scan this QR code</h2>
+
+    <img src = "data:image/png;base64, {{ qr_code }}" alt = "QR Code for authenticator app" width="500" height="600">
+    <p>Unable to scan this code? Enter the following key into the app: {{ secret }}. <br>There should be a button that allows you enter the key, typically a + button</p>
+    <p>Step 2: Enter the 6 digit code that the app shows.</p>
+
+    <form method = "POST" action = "{{ url_for('reactivate2fa_confirm') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="code">6 digit code from authenticator app:</label>
+        <input type = "text" id="code" name = "code" maxlength=6 required>
+        <br>
+        <button type = "submit">Activate 2FA</button>
+        <a href="{{ url_for('profile')}}">Cancel</a>
+    </form>
+{% endblock %}
+    
+{% block scripts %}
+{% endblock %}
+
+
