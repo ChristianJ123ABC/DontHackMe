@@ -687,7 +687,7 @@ def reactivate2fa():
 
 #Show the new QR code and replace the old secret once  the user proves their identity on the new device
 @app.route("/profile/reactivate2fa/confirm", methods=["GET","POST"])
-@rateLimiter.limit("10 per hour")
+@rateLimiter.limit("10 per hour", methods=["POST"])
 def reactivate2fa_confirm():
     if "user_id" not in session:
         return redirect(url_for("login"))
@@ -709,7 +709,8 @@ def reactivate2fa_confirm():
             cursor.execute("UPDATE users SET twofa_secret = %s WHERE id = %s", (session["temp2FASecret"], session["user_id"])) #Secret is still encrypted
             mysql.connection.commit()
             cursor.close()
-            session.clear()
+            session.pop("temp2FASecret", None)
+            session.pop("temp2FAExpiry", None)
             flash("Authenticator secret updated. Your old authenticator will no longer work, so remove it from your old device (if you still have it)", "success")
             return redirect(url_for("profile"))
 
