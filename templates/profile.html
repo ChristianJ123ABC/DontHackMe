@@ -11,11 +11,11 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label for="username">Username</label>
             <br>
-            <input type="text" id="username" name="username" value="{{ username }}" maxlength="50" required autocomplete="username">
+            <input type="text" id="username" name="username" value="{{ username }}" maxlength="50" required>
             <br>
             <label for="email">Email</label>
             <br>
-            <input type="email" id="email" name="email" value="{{ email }}" maxlength="255" required autocomplete="email">
+            <input type="email" id="email" name="email" value="{{ email }}" maxlength="255" required>
             <br>
             <label for="password">New password (optional)</label>
             <input type="password" id="password" name="password" >
@@ -140,7 +140,7 @@
                 <p>Enter your password and either a current authenticator code or a recovery code.</p>
 
                 <label for="reactivatePassword">Current password (required)</label>
-                <input type="password" id="reactivatePassword" name="password" maxlength="128" required autocomplete="current-password">
+                <input type="password" id="reactivatePassword" name="password" maxlength="128" required>
                 <br>
                 <label for="reactivateTOTP">Authenticator code</label>
                 <input type="text" id="reactivateTOTP" name="totpCode" maxlength="6">
