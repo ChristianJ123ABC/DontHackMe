@@ -141,3 +141,8 @@ html {
 #proceed{  
     color: red;
 }
+
+#strengthMeter{
+    width: 350px;
+    height: 10px;
+}
