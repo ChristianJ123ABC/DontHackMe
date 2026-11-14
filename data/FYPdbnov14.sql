@@ -13,6 +13,10 @@
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+SET @MYSQLDUMP_TEMP_LOG_BIN = @@SESSION.SQL_LOG_BIN;
+SET @@SESSION.SQL_LOG_BIN= 0;
+
+
 
 --
 -- Table structure for table `admin_audit`
@@ -58,6 +62,27 @@ CREATE TABLE `attempts` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `module_references`
+--
+
+DROP TABLE IF EXISTS `module_references`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `module_references` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `module_id` int NOT NULL,
+  `source` varchar(20) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `url` varchar(500) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `module_id` (`module_id`),
+  CONSTRAINT `module_references_ibfk_1` FOREIGN KEY (`module_id`) REFERENCES `modules` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `module_references_chk_source` CHECK ((`source` in (_utf8mb4'OWASP',_utf8mb4'NCSC'))),
+  CONSTRAINT `module_references_chk_url` CHECK ((`url` like _utf8mb4'https://%'))
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `modules`
 --
 
@@ -69,6 +94,9 @@ CREATE TABLE `modules` (
   `slug` varchar(50) NOT NULL,
   `name` varchar(100) NOT NULL,
   `description` text,
+  `what_it_is` text,
+  `how_to_spot` text,
+  `how_to_avoid` text,
   PRIMARY KEY (`id`),
   UNIQUE KEY `slug` (`slug`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -89,7 +117,7 @@ CREATE TABLE `recovery_codes` (
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `recovery_codes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=57 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=65 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -147,4 +175,4 @@ SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-09 19:54:58
+-- Dump completed on 2026-11-14 17:12:06
