@@ -77,7 +77,6 @@ CREATE TABLE `module_references` (
   PRIMARY KEY (`id`),
   KEY `module_id` (`module_id`),
   CONSTRAINT `module_references_ibfk_1` FOREIGN KEY (`module_id`) REFERENCES `modules` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `module_references_chk_source` CHECK ((`source` in (_utf8mb4'OWASP',_utf8mb4'NCSC'))),
   CONSTRAINT `module_references_chk_url` CHECK ((`url` like _utf8mb4'https://%'))
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
