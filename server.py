@@ -948,7 +948,7 @@ def module_page(slug):
         return redirect(url_for("login"))
 
     cursor = mysql.connection.cursor()
-    cursor.execute("SELECT * FROM modules WHERE slug = %s", (slug,))
+    cursor.execute("SELECT id,slug,name,description,what_it_is,how_to_spot,how_to_avoid FROM modules WHERE slug = %s", (slug,))
     module = cursor.fetchone()
 
     #Throws 404 not found if slug does not match
