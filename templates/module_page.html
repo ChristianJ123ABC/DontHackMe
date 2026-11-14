@@ -21,10 +21,10 @@
         <h1>{{ module.name }}</h1>
 
         <!-- Creates a list of the information in each module. I used the database to store the module content to prevent a giant paragraph of text per module-->
-        {% if not module.available %}
+        {% if not available %}
             <p>This module is not available yet. Please check later.</p>
         {% else %}
-
+        
             <h2>What is it?</h2>
             {% for line in whatIsIt %}
                 <p>{{ line }}</p>
@@ -56,7 +56,7 @@
         <hr>
 
         <!-- NOTE: ONCE OPENROUTER IS IMPLEMENTED, REPLACE # WITH THE TEST ROUTE-->
-         {% if module.available %}
+         {% if available %}
             <a class = "btn btn-primary" href="#">Take the test</a>
         {% endif %}
         <a href = "{{ url_for('module_list') }}">Back to modules</a>
