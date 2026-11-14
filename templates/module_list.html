@@ -1,0 +1,44 @@
+<!--STYLING 
+ https://getbootstrap.com/docs/4.0/components/buttons/
+ https://getbootstrap.com/docs/5.1/layout/css-grid/
+ https://getbootstrap.com/docs/6.0/layout/grid/
+ https://css-tricks.com/complete-guide-css-grid-layout/
+ https://www.w3schools.com/tags/tag_hr.asp
+-->
+
+
+{% extends "base.html" %}
+{% block title %}Module List{% endblock %}
+{% block body_id %}moduleList{% endblock %}
+
+{% block content %}
+    <div class = "moduleHeader">
+        <h1>Modules</h1>
+        <p>Pick a module to learn how to spot and avoid that threat. Each module has a test at the bottom if you want to assess your knowledge</p>
+    </div>
+
+
+    <!-- Jinja templates to create one card per row in the modules table-->
+    <div class = "moduleGrid">
+        {% for module in modules %}
+            <div class ="moduleCard">
+                <h2>{{ module.name }}</h2>
+                <p> {{ module.description }}</p>
+
+                {% if module.what_it_is and module.how_to_spot and module.how_to_avoid %}
+                    <a class = "btn btn-primary" href="{{ url_for('module_page', slug=module.slug) }}">Read Module</a>
+                {% else %}
+                    <button class = "btn btn-secondary" type="button" disabled>Coming Soon</button>
+                {% endif %}
+            </div>
+        {% else %}
+            <p>No modules are available yet</p>
+        {% end for %}
+    </div>
+    
+{% endblock %}
+    
+{% block scripts %}
+{% endblock %}
+
+

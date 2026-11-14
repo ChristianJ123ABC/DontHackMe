@@ -46,7 +46,7 @@
 import re, io, re, string, pyotp, qrcode, requests, os, base64, werkzeug, gunicorn, secrets, time
 from zxcvbn import zxcvbn
 from io import BytesIO
-from flask import Flask, render_template, redirect, url_for, request, session, flash
+from flask import Flask, render_template, redirect, url_for, request, session, flash, abort
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mysqldb import MySQL
@@ -918,6 +918,60 @@ def dashboard():
         return redirect(url_for("login"))
 
     return render_template("dashboard.html")
+
+
+#Used to tidy up the lines from the module content (what is it, how to spot, how to avoid)
+#Source: https://stackoverflow.com/questions/70510297/how-to-strip-a-certain-piece-of-text-from-each-line-of-a-text-file
+def splitLines(text):
+    if not text:
+        return []
+    return [line.strip() for line in text.splitlines() if line.strip() != ""]
+
+#MODULE LIST: Display each of the modules as cards with a brief description
+@app.route("/modules")
+def module_list():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT * FROM modules ORDER BY id")
+    modules = cursor.fetchall()
+    cursor.close()
+
+    return render_template("module_list.html", modules=modules)
+
+
+#Used to display the modules by their slug (used to help database identify sentences with spaces. e.g. social-engineering-&-phishing)
+@app.route("/modules/<slug>")
+def module_page(slug):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT * FROM modules WHERE slug = %s", (slug,))
+    module = cursor.fetchone()
+
+    #Throws 404 not found if slug does not match
+    if not module:
+        cursor.close()
+        abort(404)
+
+    if not (module["what_it_is"] and module["how_to_spot"] and module["how_to_avoid"]):
+        cursor.close()
+        return render_template("module_page.html", module = module, available=False)
+
+    cursor.execute("SELECT * FROM module_references WHERE module_id = %s ORDER BY id", (module["id"],))
+    references = cursor.fetchall()
+    cursor.close()
+
+    return render_template("module_page.html",
+                           module=module,
+                           available=True,
+                           whatIsIt=splitLines(module["what_it_is"]),
+                           howToSpot=splitLines(module["how_to_spot"]),
+                           howToAvoid=splitLines(module["how_to_avoid"]),
+                           references=references)
+
 
 
 
