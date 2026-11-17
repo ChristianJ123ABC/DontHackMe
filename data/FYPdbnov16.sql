@@ -1,5 +1,6 @@
 -- MySQL dump 10.13  Distrib 8.0.46, for Win64 (x86_64)
 --
+-- Host: mysql-fyp-fypdb.c.aivencloud.com    Database: defaultdb
 -- ------------------------------------------------------
 -- Server version	8.4.11
 
@@ -16,7 +17,12 @@
 SET @MYSQLDUMP_TEMP_LOG_BIN = @@SESSION.SQL_LOG_BIN;
 SET @@SESSION.SQL_LOG_BIN= 0;
 
+--
+-- GTID state at the beginning of the backup 
+--
 
+SET @@GLOBAL.GTID_PURGED=/*!80000 '+'*/ '3423c9fb-d0a4-11f1-b360-1a7d3163f2d2:1-66,
+64b9a126-d2bf-11f1-b188-8636e5cf6492:1-65';
 
 --
 -- Table structure for table `admin_audit`
@@ -78,7 +84,7 @@ CREATE TABLE `module_references` (
   KEY `module_id` (`module_id`),
   CONSTRAINT `module_references_ibfk_1` FOREIGN KEY (`module_id`) REFERENCES `modules` (`id`) ON DELETE CASCADE,
   CONSTRAINT `module_references_chk_url` CHECK ((`url` like _utf8mb4'https://%'))
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -102,6 +108,36 @@ CREATE TABLE `modules` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `questions`
+--
+
+DROP TABLE IF EXISTS `questions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `questions` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `module_id` int NOT NULL,
+  `difficulty` varchar(10) NOT NULL,
+  `scenario_type` varchar(20) NOT NULL,
+  `scenario` text NOT NULL,
+  `question` varchar(300) NOT NULL,
+  `options` json NOT NULL,
+  `correct_index` tinyint NOT NULL,
+  `explanation` text NOT NULL,
+  `reference_id` int NOT NULL,
+  `model` varchar(100) NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `module_difficulty` (`module_id`,`difficulty`),
+  KEY `questions_ibfk_2` (`reference_id`),
+  CONSTRAINT `questions_ibfk_1` FOREIGN KEY (`module_id`) REFERENCES `modules` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `questions_ibfk_2` FOREIGN KEY (`reference_id`) REFERENCES `module_references` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `questions_chk_correct` CHECK ((`correct_index` between 0 and 3)),
+  CONSTRAINT `questions_chk_difficulty` CHECK ((`difficulty` in (_utf8mb4'easy',_utf8mb4'medium',_utf8mb4'hard')))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `recovery_codes`
 --
 
@@ -117,6 +153,33 @@ CREATE TABLE `recovery_codes` (
   KEY `user_id` (`user_id`),
   CONSTRAINT `recovery_codes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=65 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `test_sessions`
+--
+
+DROP TABLE IF EXISTS `test_sessions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `test_sessions` (
+  `id` varchar(64) NOT NULL,
+  `user_id` int NOT NULL,
+  `module_id` int NOT NULL,
+  `difficulty` varchar(10) NOT NULL,
+  `question_ids` json NOT NULL,
+  `answers` json NOT NULL,
+  `current_question` tinyint NOT NULL DEFAULT '1',
+  `status` varchar(12) NOT NULL DEFAULT 'in_progress',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `expires_at` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `user_module_status` (`user_id`,`module_id`,`status`),
+  KEY `test_sessions_ibfk_2` (`module_id`),
+  CONSTRAINT `test_sessions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `test_sessions_ibfk_2` FOREIGN KEY (`module_id`) REFERENCES `modules` (`id`),
+  CONSTRAINT `test_sessions_chk_status` CHECK ((`status` in (_utf8mb4'in_progress',_utf8mb4'completed')))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -174,4 +237,4 @@ SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-14 17:12:06
+-- Dump completed on 2026-11-16 17:23:00
