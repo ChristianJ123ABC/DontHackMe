@@ -21,7 +21,7 @@ SET @@SESSION.SQL_LOG_BIN= 0;
 --
 
 SET @@GLOBAL.GTID_PURGED=/*!80000 '+'*/ '3423c9fb-d0a4-11f1-b360-1a7d3163f2d2:1-66,
-64b9a126-d2bf-11f1-b188-8636e5cf6492:1-65';
+64b9a126-d2bf-11f1-b188-8636e5cf6492:1-70';
 
 --
 -- Table structure for table `admin_audit`
@@ -120,8 +120,11 @@ CREATE TABLE `questions` (
   `scenario_type` varchar(20) NOT NULL,
   `scenario` text NOT NULL,
   `question` varchar(300) NOT NULL,
-  `options` json NOT NULL,
-  `correct_index` tinyint NOT NULL,
+  `option_a` varchar(200) NOT NULL,
+  `option_b` varchar(200) NOT NULL,
+  `option_c` varchar(200) NOT NULL,
+  `option_d` varchar(200) NOT NULL,
+  `correct_option` tinyint NOT NULL,
   `explanation` text NOT NULL,
   `reference_id` int NOT NULL,
   `model` varchar(100) NOT NULL,
@@ -131,7 +134,7 @@ CREATE TABLE `questions` (
   KEY `questions_ibfk_2` (`reference_id`),
   CONSTRAINT `questions_ibfk_1` FOREIGN KEY (`module_id`) REFERENCES `modules` (`id`) ON DELETE CASCADE,
   CONSTRAINT `questions_ibfk_2` FOREIGN KEY (`reference_id`) REFERENCES `module_references` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `questions_chk_correct` CHECK ((`correct_index` between 0 and 3)),
+  CONSTRAINT `questions_chk_correct` CHECK ((`correct_option` between 0 and 3)),
   CONSTRAINT `questions_chk_difficulty` CHECK ((`difficulty` in (_utf8mb4'easy',_utf8mb4'medium',_utf8mb4'hard')))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -166,17 +169,35 @@ CREATE TABLE `test_sessions` (
   `user_id` int NOT NULL,
   `module_id` int NOT NULL,
   `difficulty` varchar(10) NOT NULL,
-  `question_ids` json NOT NULL,
-  `answers` json NOT NULL,
-  `current_question` tinyint NOT NULL DEFAULT '1',
   `status` varchar(12) NOT NULL DEFAULT 'in_progress',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `expires_at` datetime NOT NULL,
+  `question_1` int NOT NULL,
+  `question_2` int NOT NULL,
+  `question_3` int NOT NULL,
+  `question_4` int NOT NULL,
+  `question_5` int NOT NULL,
+  `answer_1` tinyint DEFAULT NULL,
+  `answer_2` tinyint DEFAULT NULL,
+  `answer_3` tinyint DEFAULT NULL,
+  `answer_4` tinyint DEFAULT NULL,
+  `answer_5` tinyint DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `user_module_status` (`user_id`,`module_id`,`status`),
   KEY `test_sessions_ibfk_2` (`module_id`),
+  KEY `test_sessions_ibfk_3` (`question_1`),
+  KEY `test_sessions_ibfk_4` (`question_2`),
+  KEY `test_sessions_ibfk_5` (`question_3`),
+  KEY `test_sessions_ibfk_6` (`question_4`),
+  KEY `test_sessions_ibfk_7` (`question_5`),
   CONSTRAINT `test_sessions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `test_sessions_ibfk_2` FOREIGN KEY (`module_id`) REFERENCES `modules` (`id`),
+  CONSTRAINT `test_sessions_ibfk_3` FOREIGN KEY (`question_1`) REFERENCES `questions` (`id`),
+  CONSTRAINT `test_sessions_ibfk_4` FOREIGN KEY (`question_2`) REFERENCES `questions` (`id`),
+  CONSTRAINT `test_sessions_ibfk_5` FOREIGN KEY (`question_3`) REFERENCES `questions` (`id`),
+  CONSTRAINT `test_sessions_ibfk_6` FOREIGN KEY (`question_4`) REFERENCES `questions` (`id`),
+  CONSTRAINT `test_sessions_ibfk_7` FOREIGN KEY (`question_5`) REFERENCES `questions` (`id`),
+  CONSTRAINT `test_sessions_chk_answers` CHECK ((((`answer_1` is null) or (`answer_1` between 0 and 3)) and ((`answer_2` is null) or (`answer_2` between 0 and 3)) and ((`answer_3` is null) or (`answer_3` between 0 and 3)) and ((`answer_4` is null) or (`answer_4` between 0 and 3)) and ((`answer_5` is null) or (`answer_5` between 0 and 3)))),
   CONSTRAINT `test_sessions_chk_status` CHECK ((`status` in (_utf8mb4'in_progress',_utf8mb4'completed')))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -236,4 +257,4 @@ SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-16 17:23:00
+-- Dump completed on 2026-11-18 15:43:37
