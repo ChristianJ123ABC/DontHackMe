@@ -10,3 +10,4 @@ cryptography
 gunicorn
 datetime
 zxcvbn
+pytest
