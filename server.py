@@ -205,20 +205,17 @@ def isPasswordValid(password):
 #Exceeding rate limit: 429 Too Many Requests
 @app.errorhandler(werkzeug.exceptions.TooManyRequests)
 def handle_rate_limit(e):
-    flash(e.description, "warning")
     return "429 Too Many Requests, try again later",429
 
 #404 Page not found
 @app.errorhandler(werkzeug.exceptions.NotFound)
 def handle_notfound_request(e):
-    flash(e.description, "warning")
     return "404 Page Not Found",404
 
 
 #500 Internal Server Error
 @app.errorhandler(werkzeug.exceptions.InternalServerError)
 def handle_server_error(e):
-   flash(e.description, "warning")
    return "500 Internal Server Error",500
 
 
@@ -325,7 +322,7 @@ def register():
     username = request.form["username"].strip()
     password = request.form["password"]
     email = request.form["email"].strip().lower()
-    hashPass = generate_password_hash(password)
+    
 
     if isPasswordValid(password) == "breached":
         flash("Password is commonly breached, try again", "danger")
@@ -341,7 +338,7 @@ def register():
         secret = pyotp.random_base32()
         encryptSecret = encrypt2fa(secret) 
         cursor = mysql.connection.cursor()
-        cursor.execute("INSERT INTO users (username, email, hashed_password, twofa_confirmed, twofa_secret) VALUES (%s, %s, %s, 0, %s)", (username, email, hashPass,encryptSecret))
+        cursor.execute("INSERT INTO users (username, email, hashed_password, twofa_confirmed, twofa_secret) VALUES (%s, %s, %s, 0, %s)", (username, email, generate_password_hash(password),encryptSecret))
         mysql.connection.commit()
         pendingId = cursor.lastrowid 
         cursor.close()
