@@ -86,7 +86,7 @@ def askOpenRouter(prompt):
         response = requests.post(
             openRouterUrl,
             headers={"Authorization": "Bearer " + key},
-            json = {"model": model, "message": [{"role": "user", "content": prompt}]},
+            json = {"model": model, "messages": [{"role": "user", "content": prompt}]},
             timeout=timeoutSeconds #25 seconds before timing out
         )
     except requests.Timeout:
@@ -237,8 +237,10 @@ def generateQuestions(module, references, difficulty):
         reply = askOpenRouter(prompt)
         questions = checkQuestions(reply, [reference["id"] for reference in references])
     except ScenarioError as error:
-        writeLog("FAIL module=" + module["slug"] + " difficulty=" +difficulty + " reason=" +str(error))
+        writeLog("FAIL module=" + module["slug"] + " difficulty=" +difficulty + " reason=" +str(error) + " model=" + str(os.getenv("OPENROUTER_MODEL")))
         raise
 
     writeLog("PASS module=" + module["slug"] + " difficulty=" + difficulty + " model=" + str(os.getenv("OPENROUTER_MODEL")))
     return questions
+
+
