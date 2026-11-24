@@ -28,3 +28,6 @@ def testAverageThreeScores():
 def testAverageTwoScores():
     assert getDifficulty([80,20]) == "medium" #Average Score: 50
 
+#The average is not rounded: 69.9 is still medium
+def testAverageIsNotRounded():
+    assert getDifficulty([69.9]) == "medium"
