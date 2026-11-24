@@ -147,6 +147,8 @@ def checkText(value, field, maxLength):
     for word in value.split():
         word = word.strip(".,;:!?()[]<>\"'").lower() 
 
+
+        #NOTE: CONSIDER IF PHISHING SCENARIOS SHOULD CONTAIN A LINK OR NOT ONCE LINKED TO SERVER.PY
         if word.startswith("http") or word.startswith("www."):
             raise ScenarioError(field + " has a link")
 
