@@ -47,7 +47,6 @@
 #
 
 import re, io, re, string, pyotp, qrcode, requests, os, base64, werkzeug, gunicorn, secrets, time
-from zxcvbn import zxcvbn
 from io import BytesIO
 from flask import Flask, render_template, redirect, url_for, request, session, flash, abort
 from flask_wtf.csrf import CSRFProtect, CSRFError
