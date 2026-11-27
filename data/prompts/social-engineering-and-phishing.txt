@@ -42,7 +42,7 @@ Reply with JSON only. No text before or after it and no code fences. correct_ind
    "scenario": "...",
    "question": "...",
    "options": ["...", "...", "...", "..."],
-   "correct_index": 0,
+   "correct_index": 2,
    "explanation": "...",
    "reference_id": 1}
 ]}
