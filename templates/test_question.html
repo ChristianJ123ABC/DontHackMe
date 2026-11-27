@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Test: question {{ number }} of {{ total }}{% endblock %}
+{% block body_id %}testPage{% endblock %}
+
+{% block content %}
+    <div class = "testContent">
+        <a href = "{{ url_for('module_page', slug=slug) }}">Leave test</a>
+        <h1>Question {{ number }} of {{ total }}</h1>
+        <progress value="{{ number }}" max="{{ total }}" aria-label="Question {{ number }} of {{ total }}"></progress>
+
+        <p class = "testChips"><span>Difficulty: {{ difficulty }}</span><span>Type: {{ scenarioType }}</span></p>
+
+        
+        <p><strong>Fictional scenario. Do not click or reply.</strong></p>
+        <div class = "scenarioBox">
+            <p>{{ scenario }}</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('test_question', testId=testId) }}" id="answerForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- The question number the user is on. The route checks it, so the same answer cannot be saved for the next question by a double click -->
+            <input type="hidden" name="position" value="{{ number }}">
+
+            <fieldset>
+                <legend>{{ question }}</legend>
+                {% for option in options %}
+                    <div class = "optionRow">
+                        <input type="radio" name="option" id="option{{ loop.index0 }}" value="{{ loop.index0 }}" required>
+                        <label for="option{{ loop.index0 }}">{{ option }}</label>
+                    </div>
+                {% endfor %}
+            </fieldset>
+
+            <button class = "btn btn-primary" id="answerButton">{% if number == total %}Finish test{% else %}Next question{% endif %}</button>
+        </form>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='test.js') }}"></script>
+{% endblock %}
+

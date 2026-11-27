@@ -41,10 +41,12 @@
 #Guidelines RFC 6238 https://www.rfc-editor.org/info/rfc6238/
 
 #Exception Handling
-# CSRF Errors https://flask-wtf.readthedocs.io/en/latest/csrf/
+#CSRF Errors https://flask-wtf.readthedocs.io/en/latest/csrf/
+
+#Tests
+#
 
 import re, io, re, string, pyotp, qrcode, requests, os, base64, werkzeug, gunicorn, secrets, time
-from zxcvbn import zxcvbn
 from io import BytesIO
 from flask import Flask, render_template, redirect, url_for, request, session, flash, abort
 from flask_wtf.csrf import CSRFProtect, CSRFError
@@ -57,6 +59,10 @@ from dotenv import load_dotenv
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.fernet import Fernet
+
+from difficulty import getDifficulty
+from scenarios import generateQuestions, promptExists, ScenarioError, questionCount
+
 load_dotenv(override=True)
 
 app = Flask(__name__, template_folder='templates')
@@ -447,6 +453,11 @@ def login_2fa():
         cursor.execute("SELECT username,email,hashed_password,id,twofa_confirmed,twofa_secret FROM users where id = %s", (session["pending_user_id"],))
         user = cursor.fetchone()
         cursor.close()
+
+        if not user:
+            flash("Your login session has expired, please log in again.", "danger")
+            return redirect(url_for("login"))
+        
         secret = decrypt2fa(user["twofa_secret"])
 
         #Compares form input to TOTP authenticator code
@@ -758,11 +769,19 @@ def generate():
 
 
     if mode == "password":
-        length = int(request.form["length"])
+        try:
+            length = int(request.form["length"])
+        except ValueError:
+            length = 15 
+
         password = generatePassword(length, upperChar, lowerChar, digits, symbols)
 
     else:
-        words = int(request.form["words"])
+        try:
+            words = int(request.form["words"])
+        except ValueError:
+            words = 5
+            
         password = generatePassphrase(words, capitalize, number)
 
     #x = x is used to keep persistent checkbox marked via jinja template
@@ -907,7 +926,7 @@ def logout():
 
 
 # - - - - - - - - - - 
-#  CORE FUNCTIONALITY: (ORDER: DASHBOARD, MODULES, TESTS, SCANNER)
+#  CORE FUNCTIONALITY: (ORDER: DASHBOARD, MODULES (DISPLAY ALL / INDIVIDUAL MODULE), TESTS (GET DIFFICULTY, START TEST, SHOW QUESTIONS, RESULTS), SCANNER)
 # - - - - - - - - - -
 @app.route("/dashboard")
 def dashboard():
@@ -971,7 +990,282 @@ def module_page(slug):
 
 
 
+#Used to determine difficulty of next test by user's last 3 scores in that module
+def nextDifficulty(userId, moduleId):
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT score FROM attempts WHERE user_id = %s AND module_id = %s ORDER BY created_at DESC, id DESC LIMIT 3", (userId, moduleId))
+    rows = cursor.fetchall()
+    cursor.close()
+
+    scores = [row["score"] for row in rows]
+    return getDifficulty(scores)
+
+
+#START TEST: make the 5 questions, saves them and display question 1 to the user
+#Process: Starts unfinished test if there is one. Otherwise, it asks OpenRouter once for questions and if it fails to takes 5 stored questions for the same module and difficulty.
+#It saves the questions, the test and the 5 link rows and commits them. Fewer than 5 stored questions cause nothing to be saved
+
+@app.route("/modules/<slug>/test", methods=["POST"])
+@rateLimiter.limit("5 per minute; 20 per hour")
+def start_test(slug):
+    if "user_id" not in session:
+        flash("You need to be logged in", "danger")
+        return redirect(url_for("login"))
+
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT id, slug, name, what_it_is, how_to_spot, how_to_avoid FROM modules WHERE slug = %s", (slug,))
+    module = cursor.fetchone()
+
+    if not module:
+        cursor.close()
+        abort(404)
+
+    #Module requires text and prompt before a test is made
+    if not (module["what_it_is"] and module["how_to_spot"] and module["how_to_avoid"]) or not promptExists(slug):
+        cursor.close()
+        flash("This module does not have a test yet.", "warning")
+        return redirect(url_for("module_page", slug=slug))
+
+    #Delete unfinished tests that expired
+    cursor.execute("DELETE FROM test_sessions WHERE user_id = %s AND module_id = %s AND status = 'in_progress' AND expires_at < NOW()", (session["user_id"], module["id"]))
+    mysql.connection.commit()
+
+    #Continue an unfinished, active test
+    cursor.execute("SELECT id FROM test_sessions WHERE user_id = %s AND module_id = %s AND status = 'in_progress'", (session["user_id"], module["id"]))
+    unfinished = cursor.fetchone()
+
+    if unfinished:
+        cursor.close()
+        return redirect(url_for("test_question", testId=unfinished["id"]))
+
+    cursor.execute("SELECT id, source, title FROM module_references WHERE module_id = %s ORDER BY id", (module["id"],))
+    references = cursor.fetchall()
+
+    difficulty = nextDifficulty(session["user_id"], module["id"])
+
+    try:
+        questions = generateQuestions(module, references, difficulty)
+    except ScenarioError: #generic error for all OpenRouter failures
+        questions = None #OpenRouter failed / reply didn't pass validation
+
+    questionIds = []
+
+    if questions:
+        #Saves new questions so they can be re-used if OpenRouter fails / is unavailable
+        for question in questions:
+            options = question["options"]
+            cursor.execute(
+                """
+                INSERT INTO questions (
+                    module_id, difficulty, scenario_type, scenario, question,
+                    option_a, option_b, option_c, option_d,
+                    correct_option, explanation, reference_id, model
+                )
+                VALUES (
+                    %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s,
+                    %s, %s, %s, %s
+                )
+                """,
+                (
+                    module["id"],
+                    difficulty,
+                    question["scenario_type"],
+                    question["scenario"],
+                    question["question"],
+                    options[0],
+                    options[1],
+                    options[2],
+                    options[3],
+                    question["correct_index"],
+                    question["explanation"],
+                    question["reference_id"],
+                    os.getenv("OPENROUTER_MODEL"),
+                ),
+            )
+            questionIds.append(cursor.lastrowid)
+    else:
+        #Grabs the 5 stored questions for this module and difficulty
+        cursor.execute("SELECT id FROM questions WHERE module_id = %s AND difficulty = %s ORDER BY RAND() LIMIT 5", (module["id"], difficulty))
+        rows = cursor.fetchall()
+        questionIds = [row["id"] for row in rows]
+
+    #Not enough questions stored: nothing is saved or committed
+    if len(questionIds) < questionCount:
+        cursor.close()
+        flash("We could not prepare the test. Please try again later.", "danger")
+        return redirect(url_for("module_page", slug=slug))
+
+    testId = secrets.token_urlsafe(32) #Random test id so user cannot guess it
+    cursor.execute("INSERT INTO test_sessions (id, user_id, module_id, difficulty, expires_at) VALUES (%s, %s, %s, %s, NOW() + INTERVAL 30 MINUTE)",
+                   (testId, session["user_id"], module["id"], difficulty))
+
+    #One row in link table for each question in the test
+    position = 1
+    for questionId in questionIds:
+        cursor.execute("INSERT INTO test_questions (test_id, question_id, position) VALUES (%s, %s, %s)", (testId, questionId, position))
+        position = position + 1
+
+
+    #Only one commit for the new questions, the test and the link table rows being saved at once 
+    mysql.connection.commit()
+    cursor.close()
+
+    return redirect(url_for("test_question", testId=testId))
+
+
+#QUESTION PAGE: 
+#Process: finds the test that matches to the user and shows the question with the link row where the user hasn't chose an answer yet (chosen_option == NULL)
+
+@app.route("/test/<testId>", methods=["GET", "POST"])
+@rateLimiter.limit("30 per minute; 300 per hour", methods=["POST"])
+def test_question(testId):
+    if "user_id" not in session:
+        flash("You need to be logged in.", "danger")
+        return redirect(url_for("login"))
+
+    #Checks if the test id belongs to the user. if not it throws a 404 and that the id does not exist
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT t.module_id, t.difficulty, t.status, t.expires_at < NOW() AS expired, m.slug FROM test_sessions t JOIN modules m ON m.id = t.module_id WHERE t.id = %s and t.user_id = %s", (testId, session["user_id"]))
+    test = cursor.fetchone()
+
+    if not test:
+        cursor.close()
+        abort(404)
+
+    if test["status"] == "completed":
+        cursor.close()
+        return redirect(url_for("test_results", testId=testId))
+
+    if test["expired"]:
+        cursor.close()
+        flash("This test has expired. Please start a new one.", "warning")
+        return redirect(url_for("module_page", slug=test["slug"]))
+
+    #The current question that the user is on is the first link row that has no answer yet (chosen_option = NULL)
+    cursor.execute("SELECT position, question_id FROM test_questions WHERE test_id = %s AND chosen_option IS NULL ORDER BY position LIMIT 1", (testId,))
+    current = cursor.fetchone()
+
+    if not current:
+        cursor.close()
+        return redirect(url_for("test_results", testId=testId))
+
+
+    #Submit answer
+    if request.method == "POST":
+        option = request.form.get("option", "")
+        formPosition = request.form.get("position", "")
+
+        if option not in ["0", "1", "2", "3"] or formPosition != str(current["position"]):
+            cursor.close()
+            flash("Choose one of the answers", "danger")
+            return redirect(url_for("test_question", testId=testId))
+
+        cursor.execute("UPDATE test_questions SET chosen_option = %s WHERE test_id = %s AND position = %s AND chosen_option IS NULL", (int(option), testId, current["position"]))
+
+        #rowcount is 0 if the question is already answered, only the first one counts
+        #Checks if all questions have been answered
+        if cursor.rowcount == 1 and current["position"] == questionCount: #5
+
+            #Final answer: database counts the right ones, so the correct options are never sent to the page
+            #JOIN: combines test_questions and questions to match the question id column with the correct answer
+            cursor.execute("SELECT COUNT(*) AS total from test_questions tq JOIN questions q on q.id = tq.question_id WHERE tq.test_id = %s AND tq.chosen_option = q.correct_option", (testId,))
+            correctCount = cursor.fetchone()["total"]
+            score = correctCount * 100 // questionCount
+
+            cursor.execute("UPDATE test_sessions SET status = 'completed' WHERE id = %s", (testId,))
+            cursor.execute("INSERT INTO attempts (user_id, module_id, score, difficulty) VALUES (%s, %s, %s, %s)", (session["user_id"], test["module_id"], score, test["difficulty"]))
+
+        mysql.connection.commit()
+        cursor.close()
+        return redirect(url_for("test_question", testId=testId))
+
+    #Next question: The correct answer and explanation are not selected here, so they cannot reach the page
+    cursor.execute("SELECT scenario_type, scenario, question, option_a, option_b, option_c, option_d FROM questions WHERE id = %s", (current["question_id"]))
+    question = cursor.fetchone()
+    cursor.close()
+
+    options = [question["option_a"], [question["option_b"]],  [question["option_c"]],  [question["option_d"]]]
+
+    return render_template("test_question.html",
+                           testId=testId,
+                           slug=test["slug"],
+                           number=current["position"],
+                           total=questionCount,
+                           difficulty=test["difficulty"],
+                           scenarioType=question["scenario_type"],
+                           scenario=question["scenario"],
+                           question=question["question"],
+                           options=options)
+
+
+#RESULTS PAGE: only for finished tests that belong to the user
+@app.route("/test/<testId>/results")
+def test_results(testId):
+    if "user_id" not in session:
+        flash("You need to be logged in.", "danger")
+        return redirect(url_for("login"))
+
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT t.module_id, t.difficulty, t.status, m.slug, m.name FROM test_sessions t JOIN modules m ON m.id = t.module_id WHERE t.id = %s AND t.user_id = %s", (testId, session["user_id"]))
+    test = cursor.fetchone()
+
+    if not test:
+        cursor.close()
+        abort(404)
+
+    #Unfinished text never shows correct answers
+    if test["status"] != "completed":
+        cursor.close()
+        return redirect(url_for("test_question", testId=testId))
+
+    #Grabs the users results / answers from their completed test.
+    cursor.execute("SELECT tq.position, tq.chosen_option, q.scenario, q.question, q.option_a, q.option_b, q.option_c, q.option_d, q.correct_option, q.explanation, r.source, r.title, r.url "
+                   "FROM test_questions tq JOIN questions q ON q.id = tq.question_id JOIN module_references r ON r.id = q.reference_id "
+                   "WHERE tq.test_id = %s ORDER BY tq.position", (testId,))
+
+    rows = cursor.fetchall()
+    cursor.close()
+
+    if len(rows) != questionCount:
+        flash("These results are no longer available", "warning")
+        return redirect(url_for("module_page", slug=test["slug"]))
+
+    results = []
+    correctCount = 0
+    for row in rows:
+        right = row["chosen_option"] == row["correct_option"]
+    if right:
+        correctCount = correctCount+1
+
+    results.append({
+            "right": right,
+            "scenario": row["scenario"],
+            "question": row["question"],
+            "options": [row["option_a"], row["option_b"], row["option_c"], row["option_d"]],
+            "yourAnswer": row["chosen_option"],
+            "correctAnswer": row["correct_option"],
+            "explanation": row["explanation"],
+            "source": row["source"],
+            "title": row["title"],
+            "url": row["url"]
+        })
+
+    return render_template("test_results.html",
+                           slug=test["slug"],
+                           moduleName=test["name"],
+                           difficulty=test["difficulty"],
+                           nextdifficulty=nextDifficulty(session["user_id"], test["module_id"]),
+                           correctCount=correctCount,
+                           total=questionCount,
+                           score=correctCount * 100 // questionCount,
+                           results=results)
+
+    
+
+
+    
 
 #makes it so that it only runs the app when executed
 if __name__ == "__main__":
-    app.run(debug=True, host = "0.0.0.0", port=5000)
+    app.run(debug=True, host = "0.0.0.0", port=5000) #NOTE: Turn off debug=True when submitting

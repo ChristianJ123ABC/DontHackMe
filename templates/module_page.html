@@ -55,15 +55,19 @@
 
         <hr>
 
-        <!-- NOTE: ONCE OPENROUTER IS IMPLEMENTED, REPLACE # WITH THE TEST ROUTE-->
          {% if available %}
-            <a class = "btn btn-primary" href="#">Take the test</a>
+            <form method="POST" action="{{ url_for('start_test', slug=module.slug) }}" id ="startTestForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class = "btn btn-primary" id="startTestButton">Take the test</button>
+                <p class = "waitMessage" id="waitMessage" hidden>Preparing the test, this can take up to 30 seconds.</p>
+            </form>
         {% endif %}
         <a href = "{{ url_for('module_list') }}">Back to modules</a>
     </div>
 {% endblock %}
     
 {% block scripts %}
+    <script src="{{ url_for('static', filename='test.js') }}"></script>
 {% endblock %}
 
 

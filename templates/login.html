@@ -9,10 +9,10 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             
             <label for="email">Email Address</label>
-            <input type="email" name="email" class="form-control">
+            <input type="email" name="email" id="email" class="form-control">
             <br>
             <label for="password">Password</label>
-            <input type="password" name="password" class="form-control">
+            <input type="password" name="password" id="password" class="form-control">
             <br>
             <button class="btn btn-primary w-100">Login</button>
             <p style="text-align: center;"><a href="{{ url_for('forgot_password') }}">Forgot password?</a></p>
