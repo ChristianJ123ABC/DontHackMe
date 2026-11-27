@@ -216,3 +216,86 @@ html {
 }
 
 
+/*TEST PAGES (question + results)*/
+.testContent{
+    max-width: 800px;
+    margin: 30px auto 60px;
+    padding: 0 20px;
+}
+
+.testContent h1, .testContent h2, .testContent p, .testContent legend{
+    text-align: left;
+}
+
+/*shows the difficulty and scenario type */
+.testChips span{
+    display: inline-block;
+    padding: 2px 12px;
+    margin-right: 10px;
+    border: 2px solid #6ab0f6;
+    border-radius: 20px;
+}
+
+.testContent progress{
+    width: 100%;
+}
+
+/*Scenario text */
+.scenarioBox{
+    margin: 20px 0;
+    padding: 20px;
+    border: 2px solid #6ab0f6;
+    border-radius: 10px;
+}
+
+.scenarioBox p{
+    margin: 0;
+    white-space: pre-line;
+}
+
+.optionRow{
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.testContent fieldset{
+    margin-bottom: 20px;
+    border: none;
+    padding: 0;
+}
+
+.testContent legend{
+    font-size: 1.3rem;
+    margin-bottom: 15px;
+}
+
+.waitMessage{
+    margin-top: 15px;
+}
+
+.resultCard{
+    margin: 20px 0;
+    padding: 20px;
+    border-radius: 10px;
+    border-width: 2px;
+    border-style: solid;
+}
+
+
+.resultRight{
+    border-color: #28a745;
+}
+
+.resultWrong{
+    border-color: #dc3545;
+}
+
+.resultCard .scenarioText{
+    white-space: pre-line;
+}
+
+.moduleContent form{
+    display: inline;
+}

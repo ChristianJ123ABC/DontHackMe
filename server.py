@@ -456,6 +456,11 @@ def login_2fa():
         cursor.execute("SELECT username,email,hashed_password,id,twofa_confirmed,twofa_secret FROM users where id = %s", (session["pending_user_id"],))
         user = cursor.fetchone()
         cursor.close()
+
+        if not user:
+            flash("Your login session has expired, please log in again.", "danger")
+            return redirect(url_for("login"))
+        
         secret = decrypt2fa(user["twofa_secret"])
 
         #Compares form input to TOTP authenticator code
@@ -767,11 +772,19 @@ def generate():
 
 
     if mode == "password":
-        length = int(request.form["length"])
+        try:
+            length = int(request.form["length"])
+        except ValueError:
+            length = 15 
+
         password = generatePassword(length, upperChar, lowerChar, digits, symbols)
 
     else:
-        words = int(request.form["words"])
+        try:
+            words = int(request.form["words"])
+        except ValueError:
+            words = 5
+            
         password = generatePassphrase(words, capitalize, number)
 
     #x = x is used to keep persistent checkbox marked via jinja template
@@ -983,7 +996,7 @@ def module_page(slug):
 #Used to determine difficulty of next test by user's last 3 scores in that module
 def nextDifficulty(userId, moduleId):
     cursor = mysql.connection.cursor()
-    cursor.execute("SELECT score FROM attempts WHERE user_id = %s AND module_id = %s ORDER BY created_)at DESC, id DESC LIMIT 3", (userId, moduleId))
+    cursor.execute("SELECT score FROM attempts WHERE user_id = %s AND module_id = %s ORDER BY created_at DESC, id DESC LIMIT 3", (userId, moduleId))
     rows = cursor.fetchall()
     cursor.close()
 
@@ -991,7 +1004,7 @@ def nextDifficulty(userId, moduleId):
     return getDifficulty(scores)
 
 
-#START TEST: make the 5 questions, save them and display question 1 to the user
+#START TEST: make the 5 questions, saves them and display question 1 to the user
 #Process: Starts unfinished test if there is one. Otherwise, it asks OpenRouter once for questions and if it fails to takes 5 stored questions for the same module and difficulty.
 #It saves the questions, the test and the 5 link rows and commits them. Fewer than 5 stored questions cause nothing to be saved
 
@@ -1084,7 +1097,7 @@ def start_test(slug):
     if len(questionIds) < questionCount:
         cursor.close()
         flash("We could not prepare the test. Please try again later.", "danger")
-        return redirect(url_for("module_page"), slug=slug)
+        return redirect(url_for("module_page", slug=slug))
 
     testId = secrets.token_urlsafe(32) #Random test id so user cannot guess it
     cursor.execute("INSERT INTO test_sessions (id, user_id, module_id, difficulty, expires_at) VALUES (%s, %s, %s, %s, NOW() + INTERVAL 30 MINUTE)",
@@ -1104,7 +1117,9 @@ def start_test(slug):
     return redirect(url_for("test_question", testId=testId))
 
 
-#QUESTION PAGE: displays the first question to the user
+#QUESTION PAGE: 
+#Process: finds the test that matches to the user and shows the question with the link row where the user hasn't chose an answer yet (chosen_option == NULL)
+
 @app.route("/test/<testId>", methods=["GET", "POST"])
 @rateLimiter.limit("30 per minute; 300 per hour", methods=["POST"])
 def test_question(testId):
@@ -1155,7 +1170,8 @@ def test_question(testId):
         #Checks if all questions have been answered
         if cursor.rowcount == 1 and current["position"] == questionCount: #5
 
-            #Last answer: database counts the right ones, so the correct options are never sent to the page
+            #Final answer: database counts the right ones, so the correct options are never sent to the page
+            #JOIN: combines test_questions and questions to match the question id column with the correct answer
             cursor.execute("SELECT COUNT(*) AS total from test_questions tq JOIN questions q on q.id = tq.question_id WHERE tq.test_id = %s AND tq.chosen_option = q.correct_option", (testId,))
             correctCount = cursor.fetchone()["total"]
             score = correctCount * 100 // questionCount

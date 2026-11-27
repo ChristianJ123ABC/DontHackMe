@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Test results{% endblock %}
+{% block body_id %}testResults{% endblock %}
+
+{% block content %}
+    <div class = "testContent">
+        <h1>Test results: {{ moduleName }}</h1>
+        <h2>Score: {{ correctCount }} of {{ total }} ({{ score }}%)</h2>
+        <p>Difficulty of this test: {{ difficulty }}. Difficulty of your next test: {{ nextDifficulty }}.</p>
+
+        <!-- One card per question, in the order they were asked -->
+        {% for result in results %}
+            <div class = "resultCard {% if result.right %}resultRight{% else %}resultWrong{% endif %}">
+                <h2>Question {{ loop.index }}: {% if result.right %}Right{% else %}Wrong{% endif %}</h2>
+                <p class = "scenarioText">{{ result.scenario }}</p>
+                <p>{{ result.question }}</p>
+                <p>Your answer: {{ result.options[result.yourAnswer] }}</p>
+                {% if not result.right %}
+                    <p>Correct answer: {{ result.options[result.correctAnswer] }}</p>
+                {% endif %}
+                <p>Why: {{ result.explanation }}</p>
+                <p>Source: <a href="{{ result.url }}" target="_blank" rel="noopener noreferrer">{{ result.source }}: {{ result.title }}</a></p>
+            </div>
+        {% endfor %}
+
+        <hr>
+
+        <!-- Starting a test can call OpenRouter, so it is a POST with a CSRF token and not a link -->
+        <form method="POST" action="{{ url_for('start_test', slug=slug) }}" id="startTestForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class = "btn btn-primary" id="startTestButton">Take another test</button>
+            <p class = "waitMessage" id="waitMessage" hidden>Preparing your test. This can take up to 30 seconds.</p>
+        </form>
+        <a href = "{{ url_for('module_page', slug=slug) }}">Back to the module</a>
+        <a href = "{{ url_for('dashboard') }}">Dashboard</a>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='test.js') }}"></script>
+{% endblock %}
