@@ -6,7 +6,7 @@
     <div class = "testContent">
         <h1>Test results: {{ moduleName }}</h1>
         <h2>Score: {{ correctCount }} of {{ total }} ({{ score }}%)</h2>
-        <p>Difficulty of this test: {{ difficulty }}. Difficulty of your next test: {{ nextDifficulty }}.</p>
+        <p>Difficulty of this test: {{ difficulty }} <br> Difficulty of your next test: {{ nextDifficulty }}</p>
 
         <!-- One card per question, in the order they were asked -->
         {% for result in results %}

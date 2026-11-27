@@ -1181,11 +1181,11 @@ def test_question(testId):
         return redirect(url_for("test_question", testId=testId))
 
     #Next question: The correct answer and explanation are not selected here, so they cannot reach the page
-    cursor.execute("SELECT scenario_type, scenario, question, option_a, option_b, option_c, option_d FROM questions WHERE id = %s", (current["question_id"]))
+    cursor.execute("SELECT scenario_type, scenario, question, option_a, option_b, option_c, option_d FROM questions WHERE id = %s", (current["question_id"],))
     question = cursor.fetchone()
     cursor.close()
 
-    options = [question["option_a"], [question["option_b"]],  [question["option_c"]],  [question["option_d"]]]
+    options = [question["option_a"], question["option_b"],  question["option_c"],  question["option_d"]]
 
     return render_template("test_question.html",
                            testId=testId,
@@ -1235,10 +1235,10 @@ def test_results(testId):
     correctCount = 0
     for row in rows:
         right = row["chosen_option"] == row["correct_option"]
-    if right:
-        correctCount = correctCount+1
+        if right:
+            correctCount = correctCount+1
 
-    results.append({
+        results.append({
             "right": right,
             "scenario": row["scenario"],
             "question": row["question"],
@@ -1255,7 +1255,7 @@ def test_results(testId):
                            slug=test["slug"],
                            moduleName=test["name"],
                            difficulty=test["difficulty"],
-                           nextdifficulty=nextDifficulty(session["user_id"], test["module_id"]),
+                           nextDifficulty=nextDifficulty(session["user_id"], test["module_id"]),
                            correctCount=correctCount,
                            total=questionCount,
                            score=correctCount * 100 // questionCount,

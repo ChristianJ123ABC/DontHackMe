@@ -7,11 +7,11 @@
 #example domains for use: https://www.rfc-editor.org/info/rfc2606/
 #25 second wait for OpenRouter - https://requests.readthedocs.io/en/latest/user/quickstart/#timeouts
 
-import json, os, requests
+import json, os, random, requests
 from datetime import datetime
 
 openRouterUrl = "https://openrouter.ai/api/v1/chat/completions"
-timeoutSeconds = 25
+timeoutSeconds = 90 #TEMPORARY FOR MODEL QUESTION GENERATION
 questionCount = 5
 scenarioTypes = ["email", "sms", "call", "social", "popup"]
 promptFolder = os.path.join(os.path.dirname(__file__), "data", "prompts")
@@ -22,7 +22,7 @@ questionMax = 300
 optionMax = 200
 explanationMax = 600
 
-allowedEndings = ["example.com", "example.org", ".example"]
+allowedDomains = ["example.com", "example.org", "example"]
 
 #Used to avoid confusion with URLs and filenames
 skippedWords = ["e.g", "i.e"]
@@ -118,11 +118,18 @@ def askOpenRouter(prompt):
 #Validates URL address
 def isAllowedAddress(address):
     address = address.lower()
-    for ending in allowedEndings:
-        domain = ending.lstrip(".")
+    for domain in allowedDomains:
         if address == domain or address.endswith("." + domain):
             return True
     return False
+
+#Returns the address part of the link (removes http and everything past the link (e.g. http://examplehack.example/important --> examplehack.example))
+#Addresses typically  end with /, ? or #
+def getLinkHost(link):
+    host = link.split("://")[-1]
+    for separator in ["/", "?", "#"]:
+        host = host.split(separator)[0]
+    return host.split(":")[0]
 
 #Validates each piece of text against what was stated in the prompt (RULES / GUIDELINES)
 #Field = output format field from prompt, value = content from the field
@@ -139,33 +146,39 @@ def checkText(value, field, maxLength):
         if character.isdigit():
             digitsInARow = digitsInARow+1
             if digitsInARow >= 7:
-                raise ScenarioError(field + " has too long of a number")
+                raise ScenarioError(field + " has too long of a number" + character)
         else:
             digitsInARow = 0 
 
     #No real URLs or email addresses (checks every word)
     for word in value.split():
         word = word.strip(".,;:!?()[]<>\"'").lower() 
+        word = word.lstrip("$€£")
 
-
-        #NOTE: CONSIDER IF PHISHING SCENARIOS SHOULD CONTAIN A LINK OR NOT ONCE LINKED TO SERVER.PY
-        if word.startswith("http") or word.startswith("www."):
-            raise ScenarioError(field + " has a link")
+        #A link is allowed only if its an example address (not real)
+        if word.startswith("http://") or word.startswith("https://") or word.startswith("www."):
+            host = getLinkHost(word)
+            if "@" in host or not isAllowedAddress(host):
+                raise ScenarioError(field + " has a real link:" + host)
+            continue
 
         if "@" in word:
-            if not isAllowedAddress(word.split("@")[-1]):
-                raise ScenarioError(field + " has a real email address")
-
-        #Checks if the word is a file (.txt,.pdf,etc)
+            if not isAllowedAddress(getLinkHost(word.split("@")[-1])):
+                raise ScenarioError(field + " has a real email address:" + word)
+            
         elif "." in word and word not in skippedWords:
+            #A word with a "/" in it is an address with a path
             isFile = False
-            for ending in fileEndings:
-                if word.endswith(ending) and word.count(".") == 1: #Checks for one dot only
-                    isFile = True
+            if "/" not in word:
+                for ending in fileEndings:
+                    if word.endswith(ending):
+                        isFile = True
 
             isNumber = word.replace(".", "").isdigit() #e.g. 3.5
-            if not isFile and not isNumber and not isAllowedAddress(word):
-                raise ScenarioError(field + " has a real URL")
+            if not isFile and not isNumber and not isAllowedAddress(getLinkHost(word)):
+                raise ScenarioError(field + " has a real URL:" + word)
+
+       
 
 
 #Turns the  text from the model into a list of 5 checked questions
@@ -217,13 +230,18 @@ def checkQuestions(reply, allowedIds):
         if type(item.get("reference_id")) != int or item["reference_id"] not in allowedIds:
             raise ScenarioError("reference_id is not in the list sent")
 
+        #The model tends to put the correct option first, so shuffle in code and find where it ended up
+        correctText = options[item["correct_index"]]
+        shuffledOptions = list(options)
+        random.shuffle(shuffledOptions)
+
         #Once verified, create the structure manually and drop off everything else
         checked.append({
             "scenario_type": item["scenario_type"],
             "scenario": item["scenario"],
             "question": item["question"],
-            "options": options,
-            "correct_index": item["correct_index"],
+            "options": shuffledOptions,
+            "correct_index": shuffledOptions.index(correctText),
             "explanation": item["explanation"],
             "reference_id": item["reference_id"]
         })

@@ -11,16 +11,23 @@ hard: The message seems believable and only gives one or two small details to sh
 Only write the questions at the difficulty's above
 
 RULES / GUIDELINES:
-1. Everything generated must be fictional and safe. Never include real malware, threats, a real attack or anything that could be copied and used on a real person.
-2. URLs and email domains must end in .example or use example.com or example.org (e.g. alert.example.com / login.example). Never use a real website
-3. Never use a real company, shop, bank or brand name. Use a made-up name instead
-4. Never create a real card number, phone number or account number. Do not write any of these numbers with 7 or more digits to ensure they're fake.
-5. Use only the information in the MODULE TEXT below. Do not add advice that is not in it
-6. Every question must have EXACTLY 4 options and EXACTLY 1 correct option.
-7. scenario_type must be one of the following: email, sms, call, social, popup. Use a mix of these types
-8. Keep the scenario under 800 characters, the question under 300, each option under 200 and the explanation under 600. 
-9. The explanation says why the correct option is right and which warning sign the person should have noticed.
-10. reference_id is the id number of the reference in the REFERENCES list that supports the answer the best. Use only an id from that list.
+1. Keep everything pretend and safe. Don't include real malware, real threats or a real attack, and nothing that someone could copy and use on a real person.
+2. Any web address or email domain must end in .example, or use example.com or example.org (for instance alert.example.com or login.example). Never use a real website. Short links like bit.ly are real sites too, so write them as short.example/abc.
+3. Don't use real company, bank, shop, government or brand names (Microsoft, Apple, AIB and Revenue are all names to avoid). Make up a name instead, so we don't run into permission issues.
+4. Never write a phone, account or card number. Don't write any number with 7 or more digits, even if it's spaced out or has hyphens, like 1800-555-0199. If you need a phone number, just say "a phone number".
+5. Only use what's in the MODULE TEXT below. Don't add advice that isn't in it.
+6. Each question needs exactly 4 options, and exactly 1 of them must be correct.
+7. scenario_type must be one of: email, sms, call, social or popup. Use a mix of them across the 5 questions.
+8. Keep the scenario under 800 characters, the question under 300, each option under 200 and the explanation under 600.
+9. In the explanation, say why the correct option is right and name the warning sign the person should have spotted.
+10. reference_id is the id of the reference in the REFERENCES list that best supports the answer. Only use an id from that list.
+11. Every option should be 8 to 14 words long. Build the wrong options the same way as the correct one: an action or something to notice, plus a short reason. Write the three wrong options first, then write the correct one so it's no longer than the longest wrong option. Keep advice like "visit the official website" in the explanation, not in the options.
+12. Wrong options need to sound believable, so don't use words like never, always, all, definitely or must in them.
+13. Only ONE option may describe a real warning sign from the scenario. A wrong option must not describe a warning sign that's also in the scenario.
+14. The correct option can only mention things that are actually written in the scenario. Don't mention a greeting, a type of link or a sender that the scenario doesn't have.
+15. In the explanation, name the warning sign directly. Don't write "the correct option", "the module text" or "Reference".
+16. Don't write options like "all of the above", "none of the above" or "both of these", because the options get shuffled.
+17. All four options must be the same kind of thing. If the question asks what the person should notice, all four options are things to notice. If it asks what to do, all four are actions. Don't start the correct option with a different word from the others.
 
 MODULE TEXT
 <<MODULE_TEXT>>
